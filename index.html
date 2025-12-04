@@ -236,6 +236,73 @@
         .btn-secondary:hover {
             background-color: #5a6268;
         }
+
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 15px;
+            }
+            h1 {
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+            
+            /* Stack inputs */
+            .input-group {
+                flex-direction: column !important;
+            }
+            #serialInput, #teamInput {
+                width: 100% !important;
+                box-sizing: border-box;
+            }
+            
+            /* Compact Card Selectors */
+            .card-selectors {
+                gap: 5px;
+                justify-content: space-between;
+            }
+            .card-input-group {
+                width: 19%;
+                min-width: 0; /* Allow shrinking */
+            }
+            .card-label {
+                font-size: 12px;
+            }
+            .card-select-trigger {
+                padding: 5px 2px;
+                font-size: 12px;
+                min-height: 40px;
+            }
+            .card {
+                padding: 1px 4px; /* Smaller cards in selector */
+                font-size: 12px;
+                margin-right: 0;
+            }
+            
+            /* Table Scroll */
+            .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            table {
+                min-width: 600px; /* Force scroll */
+            }
+            th, td {
+                padding: 8px 5px;
+                font-size: 13px;
+                white-space: nowrap;
+            }
+            
+            /* Modal adjust */
+            .modal-content {
+                width: 95%;
+                margin: 10% auto;
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -351,23 +418,25 @@
             <button onclick="clearData()" style="background-color: #dc3545; padding: 8px 20px; font-size: 14px;">清空数据</button>
         </div>
     </div>
-    <table id="rankingTable">
-        <thead>
-            <tr>
-                <th>排名</th>
-                <th>序号</th>
-                <th>队伍名称</th>
-                <th>牌型名称</th>
-                <th>牌面</th>
-                <th>积分</th>
-                <th>分数</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- 结果将插入这里 -->
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table id="rankingTable">
+            <thead>
+                <tr>
+                    <th>排名</th>
+                    <th>序号</th>
+                    <th>队伍名称</th>
+                    <th>牌型名称</th>
+                    <th>牌面</th>
+                    <th>积分</th>
+                    <th>分数</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 结果将插入这里 -->
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
@@ -673,6 +742,10 @@
 
         let successCount = 0;
         let errors = [];
+        
+        // 默认列映射
+        let colMap = { id: 0, team: 1, hand: 2 };
+        let foundHeader = false;
 
         lines.forEach((line, index) => {
             line = line.trim();
@@ -682,69 +755,75 @@
             let parts = [];
             
             if (line.includes('\t')) {
-                // TSV - usually simpler, but let's respect quotes if present
-                // Simple split is often enough for TSV unless tab is in value (rare)
                 parts = line.split('\t');
             } else {
-                // CSV - need to respect quotes for commas
-                // Regex to match fields: "..." or non-comma
-                // Note: This is a simplified CSV parser
-                const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g); 
-                // Actually, let's fallback to simple split if no quotes
                 if (line.indexOf('"') === -1) {
                     parts = line.split(/[,，]/);
                 } else {
-                    // Regex for CSV split ignoring commas in quotes
-                    // pattern:  ( " [^"]* " | [^,]+ )
-                    const re = /(".*?"|[^,]+)(?=\s*,|\s*$)/g;
-                    // This is hard to get right with regex globally.
-                    // Let's iterate chars or use a simple state machine if we really want to support complex CSV paste.
-                    // Given the context, if it has quotes, it's likely from Excel copy-paste which is TSV usually.
-                    // If comma separated, likely manual entry.
-                    
-                    // Let's just try simple split first. If it fails, maybe user pasted weirdly.
-                    parts = line.split(/[,，]/);
+                    parts = line.split(/[,，]/); // Simplified
                 }
             }
 
-            // Clean up parts (remove surrounding quotes)
+            // Clean up parts
             parts = parts.map(p => {
                 p = p.trim();
                 if (p.startsWith('"') && p.endsWith('"')) {
-                    p = p.slice(1, -1).replace(/""/g, '"'); // Unescape double quotes
+                    p = p.slice(1, -1).replace(/""/g, '"');
                 }
                 return p;
             });
 
-            // Clean up newlines in values (e.g. team name with newline)
             parts = parts.map(p => p.replace(/[\n\r]+/g, ' '));
             
-            if (parts.length < 3) {
-                 // Try to recover if cards are space separated and were split by comma?
-                 // No, parts logic above handles separators.
-                 // Maybe the regex failed.
-            }
-            
-            // Ignore header row if detected
-            // Criteria: 1st part contains "序号" or 2nd part contains "队伍"
+            // 识别表头并动态映射列
             if (index === 0) {
-                 const firstCol = parts[0] || '';
-                 const secondCol = parts[1] || '';
-                 if (firstCol.includes('序号') || secondCol.includes('队伍') || secondCol.includes('Team')) {
-                     return; // Skip header
-                 }
+                let tempMap = {};
+                let headerFound = false;
+                
+                parts.forEach((col, i) => {
+                    const c = col.toLowerCase();
+                    if (c.includes('序号') || c === 'id' || c === 'no') tempMap.id = i;
+                    else if (c.includes('队伍') || c.includes('team') || c === 'name') tempMap.team = i;
+                    else if (c.includes('牌面') || c.includes('cards') || c === 'hand') tempMap.hand = i;
+                });
+
+                // 如果至少找到 序号+队伍 或 队伍+牌面，则认为是表头
+                if ((tempMap.id !== undefined && tempMap.team !== undefined) || 
+                    (tempMap.team !== undefined && tempMap.hand !== undefined)) {
+                    
+                    colMap = {
+                        id: tempMap.id !== undefined ? tempMap.id : 0,
+                        team: tempMap.team !== undefined ? tempMap.team : 1,
+                        hand: tempMap.hand !== undefined ? tempMap.hand : 2
+                    };
+                    foundHeader = true;
+                    return; // 跳过表头
+                }
+                
+                // 兼容旧逻辑（如果没有精确匹配但看起来像表头）
+                const firstCol = parts[0] || '';
+                const secondCol = parts[1] || '';
+                if (firstCol.includes('序号') || secondCol.includes('队伍') || secondCol.includes('Team')) {
+                    return; // 跳过表头
+                }
             }
             
-            if (parts.length < 3) {
-                errors.push(`第 ${index+1} 行格式错误: 需包含 序号, 队伍名称, 牌面`);
+            const maxIndex = Math.max(colMap.id, colMap.team, colMap.hand);
+            if (parts.length <= maxIndex) {
+                errors.push(`第 ${index+1} 行格式错误: 列数不足 (需至少 ${maxIndex+1} 列)`);
                 return;
             }
 
-            const serial = parts[0];
-            const team = parts[1];
+            const serial = parts[colMap.id];
+            const team = parts[colMap.team];
             
-            // Cards might be spread across remaining parts if delimiters were mixed
-            let cardsStr = parts.slice(2).join(' ');
+            let cardsStr = '';
+            if (foundHeader) {
+                cardsStr = parts[colMap.hand];
+            } else {
+                // 兼容旧模式：如果没有识别到表头，假设从第3列开始都是牌（应对逗号分割的情况）
+                cardsStr = parts.slice(2).join(' ');
+            }
 
             try {
                 const cards = parseCards(cardsStr);
