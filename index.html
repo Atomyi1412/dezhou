@@ -174,6 +174,68 @@
             display: none;
             text-align: center;
         }
+
+        /* Modal Styles */
+        .modal {
+            display: none; 
+            position: fixed; 
+            z-index: 1000; 
+            left: 0;
+            top: 0;
+            width: 100%; 
+            height: 100%; 
+            overflow: auto; 
+            background-color: rgba(0,0,0,0.5); 
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto; 
+            padding: 25px;
+            border: 1px solid #888;
+            width: 90%; 
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            position: relative;
+            animation: modalFadeIn 0.3s;
+        }
+
+        @keyframes modalFadeIn {
+            from {opacity: 0; transform: translateY(-20px);}
+            to {opacity: 1; transform: translateY(0);}
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close-modal:hover,
+        .close-modal:focus {
+            color: #333;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+        }
+        .btn-secondary:hover {
+            background-color: #5a6268;
+        }
     </style>
 </head>
 <body>
@@ -181,6 +243,11 @@
 <div class="container">
     <h1>德州扑克牌型计算器</h1>
     
+    <div class="toolbar">
+        <button onclick="openModal('settingsModal')" class="btn-secondary" style="padding: 8px 20px;">⚙️ 设置</button>
+        <button onclick="openModal('importModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
+    </div>
+
     <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
         <input type="text" id="serialInput" placeholder="序号 (例如: 1)" style="width: 100px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
         <input type="text" id="teamInput" placeholder="队伍名称" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
@@ -241,32 +308,41 @@
 
     <div id="errorMsg" class="error-msg"></div>
 
-    <details style="margin-bottom: 10px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
-        <summary style="cursor: pointer; font-weight: bold; color: #007bff;">设置</summary>
-        <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
-            <label for="totalTeamsInput">报名队伍总数:</label>
-            <input type="number" id="totalTeamsInput" value="50" min="1" style="padding: 5px; border: 1px solid #ccc; border-radius: 3px; width: 80px;" onchange="updateTotalTeams()">
-            <span style="color: #666; font-size: 12px;">(用于计算积分，第1名获得此分数)</span>
-        </div>
-    </details>
-
-    <details style="margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f9f9f9;">
-        <summary style="cursor: pointer; font-weight: bold; color: #007bff;">批量导入 (Excel/CSV)</summary>
-        <div style="margin-top: 10px;">
-            <div style="margin-bottom: 10px; padding: 10px; background: #fff; border: 1px dashed #ccc; border-radius: 5px;">
-                <p style="margin: 0 0 5px 0; font-size: 14px; font-weight: bold;">上传文件导入:</p>
-                <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)" style="width: 100%;">
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('settingsModal')">&times;</span>
+            <h2 style="margin-top: 0; color: #007bff;">设置</h2>
+            <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
+                <label for="totalTeamsInput">报名队伍总数:</label>
+                <input type="number" id="totalTeamsInput" value="49" min="1" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; width: 100px;" onchange="updateTotalTeams()">
+                <span style="color: #666; font-size: 14px;">(用于计算积分，第1名获得此分数)</span>
             </div>
+        </div>
+    </div>
 
-            <p style="font-size: 14px; color: #666; margin-bottom: 5px;">或粘贴内容 (格式: 序号 | 队伍名称 | 牌面)</p>
-            <textarea id="bulkInput" rows="5" style="width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px;" placeholder="例如:
+    <!-- Bulk Import Modal -->
+    <div id="importModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('importModal')">&times;</span>
+            <h2 style="margin-top: 0; color: #007bff;">批量导入 (Excel/CSV)</h2>
+            
+            <div style="margin-top: 20px;">
+                <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 5px;">
+                    <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">上传文件导入:</p>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)" style="width: 100%;">
+                </div>
+
+                <p style="font-size: 14px; color: #666; margin-bottom: 5px;">或粘贴内容 (格式: 序号 | 队伍名称 | 牌面)</p>
+                <textarea id="bulkInput" rows="10" style="width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 5px; font-family: monospace;" placeholder="例如:
 1	TeamA	♠A ♥K ♣Q ♦J ♠10
 2	TeamB	As Ks Qs Js Ts"></textarea>
-            <div style="margin-top: 10px; text-align: right;">
-                <button onclick="processBulkImport()" style="background-color: #28a745; padding: 8px 20px;">批量导入</button>
+                <div style="margin-top: 15px; text-align: right;">
+                    <button onclick="processBulkImport()" style="background-color: #28a745; padding: 10px 30px;">开始导入</button>
+                </div>
             </div>
         </div>
-    </details>
+    </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
         <h2 style="margin: 0;">排行榜</h2>
@@ -337,7 +413,7 @@
     };
     
     let deck = [];
-    let totalTeams = 50;
+    let totalTeams = 49;
 
     function updateTotalTeams() {
         const input = document.getElementById('totalTeamsInput');
@@ -358,7 +434,20 @@
             if (!event.target.closest('.card-input-group')) {
                 closeAllDropdowns();
             }
+            // Click outside modal to close
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
         });
+    }
+
+    // Modal functions
+    function openModal(modalId) {
+        document.getElementById(modalId).style.display = "block";
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).style.display = "none";
     }
 
     function generateDeck() {
@@ -489,13 +578,21 @@
         const file = event.target.files[0];
         if (!file) return;
 
+        // Close modal immediately if file is selected (we will process it)
+        // Actually, user might want to see the text area populated first?
+        // Requirement: "如果选择文件导入成功后自动关闭批量导入二级框"
+        // So we should close it AFTER success.
+        // But here we just read file. The actual import happens in processBulkImport called by reader.onload.
+        // Wait, my implementation of reader.onload calls processBulkImport() directly.
+        // So processBulkImport will handle closing.
+
         const reader = new FileReader();
         
         if (file.name.endsWith('.csv')) {
             reader.onload = function(e) {
                 const text = e.target.result;
                 document.getElementById('bulkInput').value = text;
-                processBulkImport();
+                processBulkImport(true); // Pass flag to indicate auto-import from file
             };
             reader.readAsText(file);
         } else {
@@ -522,7 +619,7 @@
                     ).join('\n');
                     
                     document.getElementById('bulkInput').value = tsv;
-                    processBulkImport();
+                    processBulkImport(true); // Pass flag to indicate auto-import from file
                 } catch (err) {
                     alert('读取Excel文件失败: ' + err.message);
                 }
@@ -534,7 +631,7 @@
         event.target.value = '';
     }
 
-    function processBulkImport() {
+    function processBulkImport(isFromFile = false) {
         const input = document.getElementById('bulkInput').value.trim();
         if (!input) return;
 
@@ -628,6 +725,16 @@
                  // Maybe the regex failed.
             }
             
+            // Ignore header row if detected
+            // Criteria: 1st part contains "序号" or 2nd part contains "队伍"
+            if (index === 0) {
+                 const firstCol = parts[0] || '';
+                 const secondCol = parts[1] || '';
+                 if (firstCol.includes('序号') || secondCol.includes('队伍') || secondCol.includes('Team')) {
+                     return; // Skip header
+                 }
+            }
+            
             if (parts.length < 3) {
                 errors.push(`第 ${index+1} 行格式错误: 需包含 序号, 队伍名称, 牌面`);
                 return;
@@ -666,8 +773,14 @@
         } else {
             alert(`成功导入 ${successCount} 条数据`);
             document.getElementById('bulkInput').value = '';
-            // Close details
-            document.querySelector('details').removeAttribute('open');
+            // Close modal if requested (e.g. from file upload) or always?
+            // Requirement: "如果选择文件导入成功后自动关闭"
+            // Let's close it always on full success for better UX, or only if from file?
+            // User said "如果选择文件导入成功后...", implies manual paste might stay open?
+            // But usually if success, closing is fine.
+            // Let's stick to closing it always on full success as per previous implementation, 
+            // but specifically ensure it handles the file upload case nicely.
+            closeModal('importModal');
         }
     }
 
