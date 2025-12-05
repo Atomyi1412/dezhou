@@ -5,10 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>德州扑克牌型计算器</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
+        /* Christmas Theme Palette */
+        :root {
+            --xmas-red: #D42426;
+            --xmas-green: #165B33;
+            --xmas-light-green: #2E8B57;
+            --xmas-gold: #F8B229;
+            --xmas-bg: #f0f2f5;
+            --xmas-white: #ffffff;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f2f5;
+            background-color: var(--xmas-bg);
+            /* Simple snow pattern */
+            background-image: radial-gradient(#e6e9ef 15%, transparent 16%), radial-gradient(#e6e9ef 15%, transparent 16%);
+            background-size: 60px 60px;
+            background-position: 0 0, 30px 30px;
             margin: 0;
             padding: 20px;
             display: flex;
@@ -16,17 +31,82 @@
             align-items: center;
         }
         .container {
-            background-color: white;
+            background-color: var(--xmas-white);
             padding: 30px;
             border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
             width: 100%;
             max-width: 900px;
+            border-top: 6px solid var(--xmas-red);
+            position: relative;
         }
+        /* Decorative ribbon effect */
+        .container::before {
+            content: "🎄";
+            position: absolute;
+            top: -25px;
+            left: 20px;
+            font-size: 40px;
+            z-index: 10;
+        }
+        .container::after {
+            content: "🎅";
+            position: absolute;
+            top: -25px;
+            right: 20px;
+            font-size: 40px;
+            z-index: 10;
+        }
+
         h1 {
-            color: #333;
+            color: var(--xmas-red);
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
+            font-weight: 800;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+            letter-spacing: 1px;
+            border-bottom: 2px dashed var(--xmas-green);
+            padding-bottom: 10px;
+            display: inline-block;
+            width: 100%;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .tab-btn {
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+            transition: all 0.3s;
+            font-size: 15px;
+        }
+        .tab-btn:hover {
+            color: var(--xmas-light-green);
+            background-color: rgba(46, 139, 87, 0.05);
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-btn.active {
+            color: var(--xmas-green);
+            border-bottom-color: var(--xmas-red);
+        }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
         /* Card Selector Styles */
@@ -36,6 +116,10 @@
             margin-bottom: 20px;
             justify-content: center;
             flex-wrap: wrap;
+            background: #f9fdf9;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px dashed #d1e7dd;
         }
         
         .card-input-group {
@@ -47,7 +131,8 @@
 
         .card-label {
             font-size: 14px;
-            color: #666;
+            color: var(--xmas-green);
+            font-weight: bold;
             margin-bottom: 5px;
             text-align: center;
         }
@@ -64,15 +149,18 @@
             min-height: 42px;
             font-weight: bold;
             transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
 
         .card-select-trigger:hover {
-            border-color: #007bff;
+            border-color: var(--xmas-light-green);
+            box-shadow: 0 0 0 3px rgba(46, 139, 87, 0.1);
         }
 
         .card-select-trigger.filled {
-            background-color: #e3f2fd;
-            border-color: #90caf9;
+            background-color: #e8f5e9;
+            border-color: #a5d6a7;
+            color: #1b5e20;
         }
 
         .dropdown-menu {
@@ -104,6 +192,11 @@
             margin-bottom: 5px;
             font-size: 14px;
         }
+        
+        .search-box:focus {
+            outline: none;
+            border-color: var(--xmas-light-green);
+        }
 
         .card-option {
             padding: 8px 12px;
@@ -116,46 +209,69 @@
         }
 
         .card-option:hover {
-            background-color: #f5f5f5;
+            background-color: #f1f8e9;
         }
 
         .card-option.selected {
-            background-color: #e3f2fd;
+            background-color: #e8f5e9;
+            color: var(--xmas-green);
         }
         
         .action-area {
             text-align: center;
-            margin: 20px 0;
+            margin: 25px 0;
         }
 
         button {
             padding: 12px 40px;
             font-size: 16px;
-            background-color: #007bff;
+            background-color: var(--xmas-green);
             color: white;
             border: none;
-            border-radius: 5px;
+            border-radius: 25px; /* Rounder buttons */
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(22, 91, 51, 0.2);
+            font-weight: 600;
         }
         button:hover {
-            background-color: #0056b3;
+            background-color: var(--xmas-light-green);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(22, 91, 51, 0.3);
+        }
+        button:active {
+            transform: translateY(0);
         }
         
         table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 0;
             margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px #eee;
         }
         th, td {
-            padding: 12px;
+            padding: 14px 12px;
             text-align: left;
             border-bottom: 1px solid #eee;
         }
         th {
-            background-color: #f8f9fa;
+            background-color: var(--xmas-green);
+            color: white;
             font-weight: 600;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 0.5px;
         }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background-color: #f9fdf9;
+        }
+
         .card {
             display: inline-block;
             padding: 2px 8px;
@@ -166,13 +282,18 @@
             font-weight: bold;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        .suit-red { color: #d9534f; }
+        .suit-red { color: var(--xmas-red); }
         .suit-black { color: #292b2c; }
+        
         .error-msg {
-            color: #d9534f;
+            color: var(--xmas-red);
             margin-top: 10px;
             display: none;
             text-align: center;
+            padding: 10px;
+            background: #fff5f5;
+            border-radius: 4px;
+            border: 1px solid #ffebee;
         }
 
         /* Modal Styles */
@@ -186,20 +307,21 @@
             height: 100%; 
             overflow: auto; 
             background-color: rgba(0,0,0,0.5); 
-            backdrop-filter: blur(2px);
+            backdrop-filter: blur(3px);
         }
 
         .modal-content {
             background-color: #fefefe;
             margin: 5% auto; 
             padding: 25px;
-            border: 1px solid #888;
+            border: none;
             width: 90%; 
             max-width: 600px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             position: relative;
             animation: modalFadeIn 0.3s;
+            border-top: 5px solid var(--xmas-green);
         }
 
         @keyframes modalFadeIn {
@@ -214,11 +336,12 @@
             font-weight: bold;
             cursor: pointer;
             line-height: 1;
+            transition: color 0.2s;
         }
 
         .close-modal:hover,
         .close-modal:focus {
-            color: #333;
+            color: var(--xmas-red);
             text-decoration: none;
             cursor: pointer;
         }
@@ -232,6 +355,7 @@
         
         .btn-secondary {
             background-color: #6c757d;
+            box-shadow: none;
         }
         .btn-secondary:hover {
             background-color: #5a6268;
@@ -241,9 +365,14 @@
         @media (max-width: 768px) {
             body {
                 padding: 10px;
+                background-size: 30px 30px; /* Smaller pattern */
             }
             .container {
                 padding: 15px;
+            }
+            .container::before, .container::after {
+                font-size: 24px;
+                top: -15px;
             }
             h1 {
                 font-size: 24px;
@@ -263,6 +392,7 @@
             .card-selectors {
                 gap: 5px;
                 justify-content: space-between;
+                padding: 10px;
             }
             .card-input-group {
                 width: 19%;
@@ -286,9 +416,14 @@
             .table-responsive {
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
+                border-radius: 8px;
+                box-shadow: 0 0 0 1px #eee;
             }
             table {
                 min-width: 600px; /* Force scroll */
+                margin-top: 0;
+                box-shadow: none;
+                border-radius: 0;
             }
             th, td {
                 padding: 8px 5px;
@@ -302,29 +437,237 @@
                 margin: 10% auto;
                 padding: 15px;
             }
+            
+            .tab-btn {
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+        }
+    <style>
+        /* ... existing styles ... */
+        /* Team List Styles */
+        .team-group-header {
+            background-color: #f8f9fa;
+            padding: 10px 15px;
+            font-weight: bold;
+            color: #495057;
+            border-left: 4px solid var(--xmas-red);
+            margin-top: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .team-list-table {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .team-list-table td {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .tag {
+            display: inline-block;
+            background: #e8f5e9; /* Light green */
+            color: var(--xmas-green);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            margin-right: 5px;
+            border: 1px solid #c8e6c9;
+        }
+
+        /* Search Area Styles */
+        .search-container {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+            border: 1px solid #e9ecef;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+        
+        .search-input {
+            padding: 8px 12px;
+            border: 1px solid #ced4da;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .search-input:focus {
+            border-color: var(--xmas-green);
+            box-shadow: 0 0 0 3px rgba(22, 91, 51, 0.1);
+        }
+        
+        .btn-icon {
+            margin-right: 5px;
+        }
+        
+        /* Custom Button Colors */
+        .btn-success { background-color: var(--xmas-green) !important; }
+        .btn-info { background-color: var(--xmas-light-green) !important; }
+        .btn-danger { background-color: var(--xmas-red) !important; }
+        .btn-secondary { background-color: #6c757d !important; }
+        
+        .hand-type-btn {
+            width: 140px;
+            padding: 8px 15px;
+            border: 1px solid #ced4da;
+            border-radius: 20px;
+            background: white;
+            color: #495057;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .hand-type-btn:hover {
+            border-color: var(--xmas-green);
+        }
+
+        .reselect-year-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            color: var(--xmas-green);
+            border: 1px solid var(--xmas-green);
+            border-radius: 20px;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            z-index: 20;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            font-weight: 600;
+        }
+        .reselect-year-btn:hover {
+            background-color: var(--xmas-green);
+            color: white;
+            box-shadow: 0 4px 8px rgba(22, 91, 51, 0.2);
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 768px) {
+            .reselect-year-btn {
+                top: 15px;
+                right: 15px;
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            .reselect-year-btn .btn-text {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>德州扑克牌型计算器</h1>
+    <button onclick="openModal('yearModal')" class="reselect-year-btn" title="切换年份">
+        📅 <span class="btn-text">切换年份</span>
+    </button>
+    <h1>🎄 圣诞大冒险统计 🎅</h1>
     
-    <div class="toolbar">
-        <button onclick="openModal('settingsModal')" class="btn-secondary" style="padding: 8px 20px;">⚙️ 设置</button>
-        <button onclick="openModal('importModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
+    <div class="tabs">
+        <div class="tab-btn active" onclick="switchTab('calc')">牌型计算 & 排行</div>
+        <div class="tab-btn" onclick="switchTab('wishes')">心愿计算 & 排行</div>
+        <div class="tab-btn" onclick="switchTab('teams')">队伍管理</div>
+        <div class="tab-btn" onclick="switchTab('final')">最终排行</div>
     </div>
 
-    <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
-        <input type="text" id="serialInput" placeholder="序号 (例如: 1)" style="width: 100px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
-        <input type="text" id="teamInput" placeholder="队伍名称" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
+    <!-- Final Ranking Tab -->
+    <div id="tab-final" class="tab-content">
+        <div class="toolbar">
+            <button onclick="exportFinalRanking()" class="btn-secondary btn-success"><span class="btn-icon">📤</span>导出总榜</button>
+            <button onclick="updateFinalRanking()" class="btn-secondary"><span class="btn-icon">🔄</span>刷新数据</button>
+        </div>
+
+        <!-- Search Inputs -->
+        <div class="search-container">
+            <input type="text" id="searchSerial" class="search-input" placeholder="序号" style="width: 80px;" oninput="updateFinalRanking()">
+            <input type="text" id="searchTeam" class="search-input" placeholder="队伍名称 (模糊)" style="width: 150px;" oninput="updateFinalRanking()">
+            <input type="text" id="searchMembers" class="search-input" placeholder="成员 (模糊)" style="width: 150px;" oninput="updateFinalRanking()">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <input type="number" id="searchWishMin" class="search-input" placeholder="心愿分Min" style="width: 100px;" oninput="updateFinalRanking()">
+                <span style="color: #999;">-</span>
+                <input type="number" id="searchWishMax" class="search-input" placeholder="Max" style="width: 100px;" oninput="updateFinalRanking()">
+        </div>
+        
+        <div style="position: relative; display: inline-block;">
+            <button onclick="toggleHandTypeDropdown()" id="handTypeDropdownBtn" class="hand-type-btn">
+                <span>选择牌型</span>
+                <span style="font-size: 12px;">▼</span>
+            </button>
+            <div id="handTypeDropdown" class="dropdown-menu" style="width: 180px;">
+                <div style="padding: 8px; border-bottom: 1px solid #eee;">
+                    <label style="display: flex; align-items: center; cursor: pointer; font-weight: bold; font-size: 14px;">
+                        <input type="checkbox" onclick="toggleAllHandTypes(this)" style="margin-right: 8px;"> 全选
+                    </label>
+                </div>
+                <div id="handTypeList" style="max-height: 250px; overflow-y: auto;">
+                    <!-- JS Generated -->
+                </div>
+            </div>
+        </div>
+
+        <button onclick="clearFinalSearch()" class="btn-secondary" style="padding: 8px 20px;">重置</button>
     </div>
+
+        <div class="table-responsive">
+            <table id="finalRankingTable">
+                <thead>
+                    <tr>
+                        <th>最终排名</th>
+                        <th>序号</th>
+                        <th>队伍名称</th>
+                        <th>成员</th>
+                        <th>心愿总计</th>
+                        <th>心愿积分</th>
+                        <th>牌型名称</th>
+                        <th>牌面</th>
+                        <th>牌型积分</th>
+                        <th>最终分数</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Content -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Calculator Tab -->
+    <div id="tab-calc" class="tab-content active">
+        <div class="toolbar" id="calcToolbar">
+            <button id="btnCalcSettings" onclick="openModal('settingsModal')" class="btn-secondary" style="padding: 8px 20px;">⚙️ 设置</button>
+            <button id="btnCalcImport" onclick="openModal('importModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
+        </div>
+
+        <div class="input-group" id="calcInputSection" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
+            <select id="serialInput" style="width: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; background-color: white;" onchange="syncTeamInput('serial')">
+                <option value="">序号</option>
+            </select>
+            <select id="teamInput" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; background-color: white;" onchange="syncTeamInput('team')">
+                <option value="">队伍名称</option>
+            </select>
+        </div>
     
     <div class="input-group" style="margin-bottom: 20px; width: 100%; display: flex; gap: 10px;">
-        <input type="text" id="cardInput" placeholder="输入5张牌 (例如: ♠A ♥K ♣Q ♦J ♠10 或 As Kh Qc Jd Ts)" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px;">
+        <!-- <input type="text" id="cardInput" ... removed > -->
     </div>
 
-    <div class="card-selectors">
+    <div class="card-selectors" id="calcCardSelectors">
         <!-- Generate 5 card inputs -->
         <div class="card-input-group" id="group1">
             <div class="card-label">牌1</div>
@@ -368,31 +711,20 @@
         </div>
     </div>
 
-    <div class="action-area">
+    <div class="action-area" id="calcActionArea">
         <button id="actionBtn" onclick="processHand()">计算 & 排名</button>
         <button id="cancelBtn" onclick="cancelEdit()" style="display:none; background-color: #6c757d; margin-left: 10px;">取消</button>
     </div>
 
     <div id="errorMsg" class="error-msg"></div>
 
-    <!-- Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal('settingsModal')">&times;</span>
-            <h2 style="margin-top: 0; color: #007bff;">设置</h2>
-            <div style="margin-top: 20px; display: flex; align-items: center; gap: 10px;">
-                <label for="totalTeamsInput">报名队伍总数:</label>
-                <input type="number" id="totalTeamsInput" value="49" min="1" style="padding: 8px; border: 1px solid #ccc; border-radius: 3px; width: 100px;" onchange="updateTotalTeams()">
-                <span style="color: #666; font-size: 14px;">(用于计算积分，第1名获得此分数)</span>
-            </div>
-        </div>
-    </div>
+
 
     <!-- Bulk Import Modal -->
     <div id="importModal" class="modal">
         <div class="modal-content">
             <span class="close-modal" onclick="closeModal('importModal')">&times;</span>
-            <h2 style="margin-top: 0; color: #007bff;">批量导入 (Excel/CSV)</h2>
+            <h2 style="margin-top: 0; color: var(--xmas-green);">批量导入 (Excel/CSV)</h2>
             
             <div style="margin-top: 20px;">
                 <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 5px;">
@@ -405,19 +737,21 @@
 1	TeamA	♠A ♥K ♣Q ♦J ♠10
 2	TeamB	As Ks Qs Js Ts"></textarea>
                 <div style="margin-top: 15px; text-align: right;">
-                    <button onclick="processBulkImport()" style="background-color: #28a745; padding: 10px 30px;">开始导入</button>
+                    <button onclick="processBulkImport()" class="btn-secondary btn-success" style="padding: 10px 30px;">开始导入</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
+    <div id="calcExportBar" style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px;">
         <h2 style="margin: 0;">排行榜</h2>
         <div>
-            <button onclick="exportRanking()" style="background-color: #17a2b8; padding: 8px 20px; font-size: 14px; margin-right: 10px;">导出表格</button>
-            <button onclick="clearData()" style="background-color: #dc3545; padding: 8px 20px; font-size: 14px;">清空数据</button>
+            <button id="btnExportRanking" onclick="exportRanking()" class="btn-secondary btn-info" style="padding: 8px 20px; font-size: 14px; margin-right: 10px;">导出表格</button>
+            <button id="btnClearHandData" onclick="clearData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空数据</button>
         </div>
     </div>
+
+
     <div class="table-responsive">
         <table id="rankingTable">
             <thead>
@@ -436,10 +770,174 @@
                 <!-- 结果将插入这里 -->
             </tbody>
         </table>
+    </div> <!-- End table-responsive -->
+    </div> <!-- End tab-calc -->
+
+    <!-- Wish Calculation Tab -->
+    <div id="tab-wishes" class="tab-content">
+        <div class="toolbar" id="wishToolbar">
+            <button id="btnWishSettings" onclick="openModal('settingsModal')" class="btn-secondary" style="padding: 8px 20px;">⚙️ 设置</button>
+            <button id="btnWishImport" onclick="openModal('wishImportModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
+            <button id="btnWishExport" onclick="exportWishRanking()" class="btn-secondary btn-success" style="padding: 8px 20px;">📤 导出排行</button>
+            <button id="btnWishClear" onclick="clearWishData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空数据</button>
+        </div>
+
+        <div id="wishFormSection" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--xmas-green);">录入/编辑心愿</h3>
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
+                <select id="wishSerialInput" style="width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncWishInput('serial')">
+                    <option value="">序号</option>
+                </select>
+                <select id="wishTeamInput" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncWishInput('team')">
+                    <option value="">队伍名称</option>
+                </select>
+            </div>
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="number" id="wish1" placeholder="1颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <input type="number" id="wish2" placeholder="2颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <input type="number" id="wish3" placeholder="3颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <input type="number" id="wish4" placeholder="4颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+                <input type="number" id="wish5" placeholder="5颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+            </div>
+            <div style="text-align: right;">
+                <button id="cancelWishEditBtn" onclick="cancelWishEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消</button>
+                <button id="saveWishBtn" onclick="saveWish()" style="padding: 8px 25px;">保存数据</button>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table id="wishRankingTable">
+                <thead>
+                    <tr>
+                        <th>排名</th>
+                        <th>序号</th>
+                        <th>队伍名称</th>
+                        <th>1颗</th>
+                        <th>2颗</th>
+                        <th>3颗</th>
+                        <th>4颗</th>
+                        <th>5颗</th>
+                        <th>心愿总计</th>
+                        <th>积分</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dynamic Content -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Team Management Tab -->
+    <div id="tab-teams" class="tab-content">
+        <div class="toolbar" id="teamToolbar">
+            <button id="btnTeamImport" onclick="openModal('teamImportModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
+            <button id="btnTeamExport" onclick="exportTeams()" class="btn-secondary btn-success" style="padding: 8px 20px;">📤 导出队伍</button>
+            <button id="btnTeamClear" onclick="clearTeamData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空列表</button>
+        </div>
+
+        <!-- Add Team Form -->
+        <div id="teamFormSection" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h3 style="margin-top: 0; font-size: 16px; color: var(--xmas-green);">添加/编辑队伍</h3>
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; align-items: center;">
+                <input type="text" id="teamSerial" placeholder="序号" style="width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <div style="flex: 1; display: flex; gap: 5px; align-items: center;">
+                    <input type="text" id="teamName" placeholder="队伍名称" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                    <input type="file" id="teamNameImageInput" accept="image/*" style="display:none" onchange="handleTeamImageSelect(this)">
+                    <button onclick="document.getElementById('teamNameImageInput').click()" style="padding: 5px 10px; font-size: 12px;">上传图片队名</button>
+                    <div id="teamNamePreview" style="display:none; align-items: center; gap: 5px;">
+                        <img id="teamNamePreviewImg" src="" style="height: 30px; border: 1px solid #ddd;">
+                        <button onclick="clearTeamImage()" style="padding: 0 5px; color: red;">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
+                <input type="text" id="teamMembers" placeholder="成员 (用逗号或空格分隔)" style="flex: 2; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <input type="text" id="teamTime" placeholder="预约时间 (例如: 11.24(周一)下午18:00)" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+            </div>
+            <div style="text-align: right;">
+                <button id="cancelTeamEditBtn" onclick="cancelTeamEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消</button>
+                <button id="saveTeamBtn" onclick="saveTeam()" style="padding: 8px 25px;">保存队伍</button>
+            </div>
+        </div>
+
+        <!-- Team List -->
+        <div id="teamListContainer">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+</div>
+<div id="yearModal" class="modal">
+  <div class="modal-content">
+    <span class="close-modal" onclick="closeModal('yearModal')">&times;</span>
+    <h3 style="margin-top:0; color: var(--xmas-green);">选择年份</h3>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <select id="yearSelect" class="search-input" style="width:140px;"></select>
+      <input type="password" id="yearPasscode" class="search-input" placeholder="管理口令（可选）" style="width:160px;">
+      <button onclick="confirmYearSelection()" style="padding:8px 20px;">确定</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+        <span class="close-modal" onclick="closeModal('settingsModal')">&times;</span>
+        <h2 style="margin-top: 0; color: var(--xmas-green);">设置</h2>
+        
+        <div style="margin-top: 20px;">
+            <div class="input-group" style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px;">队伍总数 (用于积分计算):</label>
+                <input type="number" id="totalTeamsInput" value="49" onchange="updateTotalTeams()" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <p style="font-size: 12px; color: #666; margin-top: 5px;">默认为49队。第一名积分 = 队伍总数，最后一名1分。</p>
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Wish Import Modal -->
+<div id="wishImportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('wishImportModal')">&times;</span>
+        <h2 style="margin-top: 0; color: var(--xmas-green);">批量导入心愿 (Excel)</h2>
+        
+        <div style="margin-top: 20px;">
+            <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 5px;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">上传文件导入:</p>
+                <input type="file" id="wishFileInput" accept=".xlsx, .xls" onchange="handleWishFileUpload(event)" style="width: 100%;">
+            </div>
+            <p style="font-size: 12px; color: #666;">支持格式: 序号 | 队伍名称 | 1颗心愿 | 2颗心愿 | 3颗心愿 | 4颗心愿 | 5颗心愿</p>
+        </div>
+    </div>
+</div>
+
+<!-- Team Import Modal -->
+<div id="teamImportModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeModal('teamImportModal')">&times;</span>
+        <h2 style="margin-top: 0; color: var(--xmas-green);">批量导入队伍</h2>
+        
+        <div style="margin-top: 20px;">
+            <div style="margin-bottom: 15px; padding: 15px; background: #f8f9fa; border: 1px dashed #ccc; border-radius: 5px;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; font-weight: bold;">上传文件导入 (Excel):</p>
+                <input type="file" id="teamFileInput" accept=".xlsx, .xls" onchange="handleTeamFileUpload(event)" style="width: 100%;">
+            </div>
+            <p style="font-size: 12px; color: #666;">支持格式: 序号 | 队伍名称 | 成员1 | 成员2... | 队伍人数 | 预约时间</p>
+        </div>
+    </div>
+</div>
+
+
 <script>
+    const SUPABASE_URL = 'https://ixdgydcuaretfutmsyhz.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4ZGd5ZGN1YXJldGZ1dG1zeWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjMwNjQsImV4cCI6MjA4MDQzOTA2NH0.xs37WIBXOQcqKXfa1dK_JT9vyabw6xmz4jaWob7KEOo';
+    let supabaseClient = null;
+    let currentYear = null;
+    let isAdmin = false;
     // 牌面定义
     const SUITS = {
         's': '♠', 'S': '♠', '♠': '♠',
@@ -483,6 +981,145 @@
     
     let deck = [];
     let totalTeams = 49;
+    let wishList = []; // Stores wish data: { serial, team, wishes: [c1,c2,c3,c4,c5], total, points }
+
+    function openYearModal() {
+        const sel = document.getElementById('yearSelect');
+        if (sel.options.length === 0) {
+            const now = new Date().getFullYear();
+            for (let y = now - 5; y <= now + 1; y++) {
+                const opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                sel.appendChild(opt);
+            }
+            sel.value = String(now);
+        }
+        openModal('yearModal');
+    }
+
+    async function confirmYearSelection() {
+        const y = parseInt(document.getElementById('yearSelect').value);
+        if (!y || isNaN(y)) return;
+        currentYear = y;
+        const pass = (document.getElementById('yearPasscode') && document.getElementById('yearPasscode').value) || '';
+        isAdmin = pass === 'sd502502';
+        closeModal('yearModal');
+        await initSupabase();
+        await loadYearData(y);
+        updateHeaderYear();
+        updateCalculatorDropdowns();
+        renderWishDropdowns();
+        updateTable();
+        updateFinalRanking();
+        applyRoleUI();
+    }
+
+    function applyRoleUI() {
+        const show = (el) => { if (el) el.style.display = ''; };
+        const hide = (el) => { if (el) el.style.display = 'none'; };
+
+        if (isAdmin) {
+            show(document.getElementById('btnCalcSettings'));
+            show(document.getElementById('btnCalcImport'));
+            show(document.getElementById('calcInputSection'));
+            show(document.getElementById('calcCardSelectors'));
+            show(document.getElementById('calcActionArea'));
+            show(document.getElementById('btnClearHandData'));
+
+            show(document.getElementById('btnWishSettings'));
+            show(document.getElementById('btnWishImport'));
+            show(document.getElementById('btnWishClear'));
+            show(document.getElementById('wishFormSection'));
+
+            show(document.getElementById('btnTeamImport'));
+            show(document.getElementById('btnTeamClear'));
+            show(document.getElementById('teamFormSection'));
+        } else {
+            hide(document.getElementById('btnCalcSettings'));
+            hide(document.getElementById('btnCalcImport'));
+            hide(document.getElementById('calcInputSection'));
+            hide(document.getElementById('calcCardSelectors'));
+            hide(document.getElementById('calcActionArea'));
+            hide(document.getElementById('btnClearHandData'));
+
+            hide(document.getElementById('btnWishSettings'));
+            hide(document.getElementById('btnWishImport'));
+            hide(document.getElementById('btnWishClear'));
+            hide(document.getElementById('wishFormSection'));
+
+            hide(document.getElementById('btnTeamImport'));
+            hide(document.getElementById('btnTeamClear'));
+            hide(document.getElementById('teamFormSection'));
+        }
+    }
+
+    function updateHeaderYear() {
+        const h1 = document.querySelector('h1');
+        if (h1 && currentYear) {
+            h1.textContent = `🎄 ${currentYear}年圣诞大冒险统计 🎅`;
+            document.title = `${currentYear}年德州扑克牌型计算器`;
+        }
+    }
+
+    async function initSupabase() {
+        if (!supabaseClient) {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+    }
+
+    async function loadYearData(year) {
+        if (!supabaseClient) return;
+        const { data: teams } = await supabaseClient.from('teams').select('*').eq('year', year).order('sort_key', { ascending: true });
+        const { data: wishes } = await supabaseClient.from('wishes').select('*').eq('year', year);
+        const { data: hands } = await supabaseClient.from('hands').select('*').eq('year', year);
+        teamList = (teams || []).map(t => ({ id: `${year}-${t.serial}`, serial: String(t.serial), name: t.name, members: t.members || [], count: t.count || 0, time: t.time || '', sortKey: t.sort_key || 0 }));
+        wishList = (wishes || []).map(w => ({ serial: String(w.serial), team: w.team_name || '', wishes: Array.isArray(w.wishes) ? w.wishes : (w.wishes ? Object.values(w.wishes) : [0,0,0,0,0]), total: w.total || 0 }));
+        handHistory = (hands || []).map(h => ({ id: `${year}-${h.serial}`, serial: String(h.serial), team: h.team_name || '', handTypeName: h.hand_type_name || '', cards: Array.isArray(h.cards) ? h.cards : [], score: h.hand_raw_score || 0 }));
+        renderTeamList();
+        renderWishRanking();
+        handHistory.sort((a, b) => b.score - a.score);
+        updateTable();
+    }
+
+    async function upsertTeams(rows) {
+        if (!supabaseClient || !currentYear) return;
+        const payload = rows.map(t => ({ year: currentYear, serial: String(t.serial), name: t.name, members: t.members, count: t.count, time: t.time, sort_key: t.sortKey }));
+        await supabaseClient.from('teams').upsert(payload, { onConflict: 'year,serial' });
+    }
+
+    async function deleteTeamInCloud(serial) {
+        if (!supabaseClient || !currentYear) return;
+        await supabaseClient.from('teams').delete().eq('year', currentYear).eq('serial', String(serial));
+    }
+
+    async function upsertWishes(rows) {
+        if (!supabaseClient || !currentYear) return;
+        const payload = rows.map(w => ({ year: currentYear, serial: String(w.serial), team_name: w.team, wishes: w.wishes, total: w.total }));
+        await supabaseClient.from('wishes').upsert(payload, { onConflict: 'year,serial' });
+    }
+
+    async function deleteWishInCloud(serial) {
+        if (!supabaseClient || !currentYear) return;
+        await supabaseClient.from('wishes').delete().eq('year', currentYear).eq('serial', String(serial));
+    }
+
+    async function upsertHands(rows) {
+        if (!supabaseClient || !currentYear) return;
+        const payload = rows.map(h => ({ year: currentYear, serial: String(h.serial), team_name: h.team, hand_type_name: h.handTypeName, cards: h.cards, hand_points: 0, hand_raw_score: h.score }));
+        await supabaseClient.from('hands').upsert(payload, { onConflict: 'year,serial' });
+    }
+
+    async function deleteHandsInCloud(serial) {
+        if (!supabaseClient || !currentYear) return;
+        await supabaseClient.from('hands').delete().eq('year', currentYear).eq('serial', String(serial));
+    }
+
+    async function upsertFinalRanking(rows) {
+        if (!supabaseClient || !currentYear) return;
+        const payload = rows.map(r => ({ year: currentYear, serial: String(r.serial), team_name: r.team, members: r.members ? r.members.split(',').map(m => m.trim()).filter(Boolean) : [], wish_total: r.wishTotal, wish_points: r.wishPoints, hand_type_name: r.handTypeName, hand_cards: r.handCards, hand_points: r.handPoints, hand_raw_score: r.handRawScore, final_score: r.finalScore, rank: r.rank }));
+        await supabaseClient.from('final_rankings').upsert(payload, { onConflict: 'year,serial' });
+    }
 
     function updateTotalTeams() {
         const input = document.getElementById('totalTeamsInput');
@@ -490,14 +1127,1241 @@
         if (!isNaN(val) && val > 0) {
             totalTeams = val;
             updateTable();
+            renderWishRanking(); // Also update wish ranking
         }
     }
 
-    // 初始化
-    function init() {
+    // Tab Switching
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('tab-' + tabId).classList.add('active');
+        // Find button
+        const btns = document.querySelectorAll('.tab-btn');
+        if (tabId === 'calc') {
+            btns[0].classList.add('active');
+            updateCalculatorDropdowns();
+        }
+        if (tabId === 'wishes') {
+            btns[1].classList.add('active');
+            renderWishDropdowns();
+        }
+        if (tabId === 'teams') {
+            btns[2].classList.add('active');
+        }
+        if (tabId === 'final') {
+            btns[3].classList.add('active');
+            updateFinalRanking();
+        }
+    }
+
+    function getFinalRankingData() {
+        // 1. Ensure Wish Points are up to date
+        // Note: We don't call renderWishRanking() here to avoid side effects (DOM updates) if just exporting.
+        // But we need the points. wishList entries have points if renderWishRanking ran.
+        // To be safe, we can force update wishList points without rendering? 
+        // Actually, let's just recalculate points locally to be purely functional.
+        
+        // Calculate Wish Points
+        // Sort a copy to avoid mutating global wishList unexpectedly if that matters (though usually we want them synced)
+        const sortedWishes = [...wishList].sort((a, b) => b.total - a.total);
+        const wishPointsMap = {};
+        let wishRank = 1;
+        sortedWishes.forEach((entry, index) => {
+            if (index > 0 && entry.total === sortedWishes[index-1].total) {
+                // Tie
+            } else {
+                wishRank = index + 1;
+            }
+            const points = totalTeams - wishRank + 1;
+            wishPointsMap[entry.serial] = {
+                points: points,
+                total: entry.total,
+                team: entry.team
+            };
+        });
+
+        // Calculate Hand Points
+        const sortedHands = [...handHistory].sort((a, b) => b.score - a.score);
+        const handPointsMap = {};
+        let handRank = 1;
+        sortedHands.forEach((entry, index) => {
+            if (index > 0 && entry.score === sortedHands[index-1].score) {
+                // Tie
+            } else {
+                handRank = index + 1;
+            }
+            const points = totalTeams - handRank + 1;
+            handPointsMap[entry.serial] = {
+                points: points,
+                handTypeName: entry.handTypeName,
+                cards: entry.cards,
+                team: entry.team,
+                score: entry.score // Include raw score for tie-breaking
+            };
+        });
+
+        // Aggregate
+        const allSerials = new Set();
+        teamList.forEach(t => allSerials.add(t.serial));
+        wishList.forEach(w => allSerials.add(w.serial));
+        handHistory.forEach(h => allSerials.add(h.serial));
+
+        const ranking = [];
+
+        allSerials.forEach(serial => {
+            const teamEntry = teamList.find(t => t.serial === serial);
+            const wishData = wishPointsMap[serial];
+            const handData = handPointsMap[serial];
+
+            // Name resolution
+            let teamName = "未知队伍";
+            if (teamEntry) teamName = teamEntry.name;
+            else if (handData) teamName = handData.team;
+            else if (wishData) teamName = wishData.team;
+
+            const members = teamEntry ? teamEntry.members.join(', ') : "";
+            const wishTotal = wishData ? wishData.total : 0;
+            const wishPoints = wishData ? wishData.points : 0; // 0 points if not in wish list
+            
+            const handTypeName = handData ? handData.handTypeName : "-";
+            const handCards = handData ? handData.cards : [];
+            const handPoints = handData ? handData.points : 0;
+            const handRawScore = handData ? handData.score : 0;
+
+            const finalScore = wishPoints + handPoints;
+
+            ranking.push({
+                serial: serial,
+                team: teamName,
+                members: members,
+                wishTotal: wishTotal,
+                wishPoints: wishPoints,
+                handTypeName: handTypeName,
+                handCards: handCards,
+                handPoints: handPoints,
+                handRawScore: handRawScore,
+                finalScore: finalScore
+            });
+        });
+
+        // Sort by Final Score, then by Hand Raw Score
+        ranking.sort((a, b) => {
+            if (b.finalScore !== a.finalScore) {
+                return b.finalScore - a.finalScore;
+            }
+            // Tie-breaker: Hand Strength
+            return b.handRawScore - a.handRawScore;
+        });
+        
+        // Assign Final Ranks
+        let finalRank = 1;
+        ranking.forEach((item, index) => {
+            // Check for tie in both Final Score AND Hand Raw Score
+            if (index > 0 && 
+                item.finalScore === ranking[index-1].finalScore && 
+                item.handRawScore === ranking[index-1].handRawScore) {
+                // Tie
+            } else {
+                finalRank = index + 1;
+            }
+            item.rank = finalRank;
+        });
+
+        return ranking;
+    }
+
+    // Hand Type Filter Logic
+    let selectedHandTypes = [];
+
+    function initHandTypeFilter() {
+        const container = document.getElementById('handTypeList');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        HAND_TYPES.forEach(type => {
+            const div = document.createElement('div');
+            div.style.padding = '8px';
+            div.style.borderBottom = '1px solid #f5f5f5';
+            
+            div.innerHTML = `
+                <label style="cursor: pointer; display: flex; align-items: center; width: 100%; margin: 0;">
+                    <input type="checkbox" value="${type.name}" onchange="updateHandTypeSelection()" style="margin-right: 8px;"> 
+                    ${type.name}
+                </label>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function toggleHandTypeDropdown() {
+        const dropdown = document.getElementById('handTypeDropdown');
+        const current = dropdown.style.display;
+        
+        // Close card dropdowns (remove .show class)
+        if (typeof closeAllDropdowns === 'function') {
+            closeAllDropdowns();
+        }
+        
+        // Clear inline display style from other dropdowns (fix for potential conflicts)
+        document.querySelectorAll('.dropdown-menu').forEach(d => {
+            if (d !== dropdown) d.style.display = ''; 
+        });
+
+        // Toggle current
+        dropdown.style.display = (current === 'block') ? 'none' : 'block';
+        
+        if (dropdown.style.display === 'block') {
+            setTimeout(() => {
+                document.addEventListener('click', closeHandTypeDropdownOutside);
+            }, 0);
+        }
+    }
+
+    function closeHandTypeDropdownOutside(e) {
+        const dropdown = document.getElementById('handTypeDropdown');
+        const btn = document.getElementById('handTypeDropdownBtn');
+        if (dropdown && !dropdown.contains(e.target) && !btn.contains(e.target)) {
+            dropdown.style.display = 'none';
+            document.removeEventListener('click', closeHandTypeDropdownOutside);
+        }
+    }
+
+    function updateHandTypeSelection() {
+        const checkboxes = document.querySelectorAll('#handTypeList input[type="checkbox"]');
+        selectedHandTypes = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+        
+        const btn = document.getElementById('handTypeDropdownBtn');
+        const span = btn.querySelector('span');
+        
+        if (selectedHandTypes.length === 0) {
+            span.textContent = '选择牌型';
+            btn.style.borderColor = '#ccc';
+            btn.style.background = 'white';
+            btn.style.color = '#333';
+        } else if (selectedHandTypes.length === HAND_TYPES.length) {
+            span.textContent = '全部牌型';
+            btn.style.borderColor = '#165B33';
+            btn.style.background = '#e8f5e9';
+            btn.style.color = '#165B33';
+        } else {
+            span.textContent = `已选 ${selectedHandTypes.length} 项`;
+            btn.style.borderColor = '#165B33';
+            btn.style.background = '#e8f5e9';
+            btn.style.color = '#165B33';
+        }
+        
+        // Check/Uncheck "Select All" based on selection
+        const allCb = document.querySelector('#handTypeDropdown input[onclick*="toggleAllHandTypes"]');
+        if (allCb) {
+             allCb.checked = (checkboxes.length > 0 && selectedHandTypes.length === checkboxes.length);
+        }
+
+        updateFinalRanking();
+    }
+
+    function toggleAllHandTypes(source) {
+        const checkboxes = document.querySelectorAll('#handTypeList input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = source.checked);
+        updateHandTypeSelection();
+    }
+
+    function filterFinalRanking(data) {
+        const sSerial = document.getElementById('searchSerial').value.trim().toLowerCase();
+        const sTeam = document.getElementById('searchTeam').value.trim().toLowerCase();
+        const sMembers = document.getElementById('searchMembers').value.trim().toLowerCase();
+        const sWishMin = parseFloat(document.getElementById('searchWishMin').value);
+        const sWishMax = parseFloat(document.getElementById('searchWishMax').value);
+        
+        return data.filter(item => {
+            // Serial: Exact match (if provided)
+            if (sSerial && String(item.serial).toLowerCase() !== sSerial) return false;
+
+            // Team Name: Fuzzy match
+            if (sTeam && !String(item.team).toLowerCase().includes(sTeam)) return false;
+
+            // Members: Fuzzy match
+            if (sMembers && !String(item.members).toLowerCase().includes(sMembers)) return false;
+
+            // Wish Score Range
+            if (!isNaN(sWishMin) && item.wishTotal < sWishMin) return false;
+            if (!isNaN(sWishMax) && item.wishTotal > sWishMax) return false;
+
+            // Hand Type: Multi-select
+            if (selectedHandTypes.length > 0 && !selectedHandTypes.includes(item.handTypeName)) return false;
+
+            return true;
+        });
+    }
+
+    function clearFinalSearch() {
+        document.getElementById('searchSerial').value = '';
+        document.getElementById('searchTeam').value = '';
+        document.getElementById('searchMembers').value = '';
+        document.getElementById('searchWishMin').value = '';
+        document.getElementById('searchWishMax').value = '';
+        
+        // Reset Hand Type Filter
+        const checkboxes = document.querySelectorAll('#handTypeList input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = false);
+        const allCb = document.querySelector('#handTypeDropdown input[onclick*="toggleAllHandTypes"]');
+        if (allCb) allCb.checked = false;
+        
+        updateHandTypeSelection();
+    }
+
+    function updateFinalRanking() {
+        const data = getFinalRankingData();
+        const filteredData = filterFinalRanking(data);
+        const tbody = document.querySelector('#finalRankingTable tbody');
+        tbody.innerHTML = '';
+
+        filteredData.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            // 最终排名
+            tr.innerHTML += `<td>${item.rank}</td>`;
+            // 序号
+            tr.innerHTML += `<td>${item.serial}</td>`;
+            // 队伍名称
+            const nameDisplay = isImage(item.team) ? `<img src="${item.team}" style="height:30px; vertical-align:middle;">` : item.team;
+            tr.innerHTML += `<td>${nameDisplay}</td>`;
+            // 成员
+            tr.innerHTML += `<td>${item.members}</td>`;
+            // 心愿总计
+            tr.innerHTML += `<td>${item.wishTotal}</td>`;
+            // 心愿积分
+            tr.innerHTML += `<td>${item.wishPoints}</td>`;
+            // 牌型名称
+            tr.innerHTML += `<td>${item.handTypeName}</td>`;
+            // 牌面
+            const cardTd = document.createElement('td');
+            if (item.handCards.length > 0) {
+                 item.handCards.forEach(c => {
+                     const s = document.createElement('span');
+                     s.className = `card ${c.color === 'red' ? 'suit-red' : 'suit-black'}`;
+                     s.textContent = `${c.suit}${c.rankLabel}`;
+                     cardTd.appendChild(s);
+                 });
+            } else {
+                cardTd.textContent = "-";
+            }
+            tr.appendChild(cardTd);
+            
+            // 牌型积分
+            tr.innerHTML += `<td>${item.handPoints}</td>`;
+            // 最终分数
+            tr.innerHTML += `<td style="font-weight:bold; color:#d9534f; font-size:1.1em;">${item.finalScore}</td>`;
+            
+            tbody.appendChild(tr);
+        });
+    }
+
+    function exportFinalRanking() {
+        const data = getFinalRankingData();
+        if (data.length === 0) {
+            alert('没有数据可导出');
+            return;
+        }
+
+        const exportData = data.map(item => {
+            const cardStr = item.handCards.map(c => `${c.suit}${c.rankLabel}`).join(' ');
+            return {
+                "最终排名": item.rank,
+                "序号": item.serial,
+                "队伍名称": isImage(item.team) ? "[图片队伍]" : item.team,
+                "成员": item.members,
+                "心愿总计": item.wishTotal,
+                "心愿积分": item.wishPoints,
+                "牌型名称": item.handTypeName,
+                "牌面": cardStr,
+                "牌型积分": item.handPoints,
+                "最终分数": item.finalScore
+            };
+        });
+
+        upsertFinalRanking(data);
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        
+        // Column widths
+        const wscols = [
+            {wch: 8},  // 排名
+            {wch: 10}, // 序号
+            {wch: 20}, // 队伍
+            {wch: 30}, // 成员
+            {wch: 10}, // 心愿总计
+            {wch: 10}, // 心愿积分
+            {wch: 15}, // 牌型
+            {wch: 20}, // 牌面
+            {wch: 10}, // 牌型积分
+            {wch: 10}  // 最终分数
+        ];
+        ws['!cols'] = wscols;
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "最终总榜");
+        
+        const date = new Date();
+        const dateStr = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+        const timeStr = `${date.getHours().toString().padStart(2,'0')}${date.getMinutes().toString().padStart(2,'0')}`;
+        
+        try {
+             XLSX.writeFile(wb, `最终总榜_${dateStr}_${timeStr}.xlsx`);
+        } catch (e) {
+             alert('导出失败: ' + e.message);
+        }
+    }
+
+    function updateCalculatorDropdowns() {
+        const serialSelect = document.getElementById('serialInput');
+        const teamSelect = document.getElementById('teamInput');
+        
+        // Save current selection
+        const currentSerial = serialSelect.value;
+        const currentTeam = teamSelect.value;
+
+        serialSelect.innerHTML = '<option value="">序号</option>';
+        teamSelect.innerHTML = '<option value="">队伍名称</option>';
+        
+        // Sort by serial
+        const sortedList = [...teamList].sort((a, b) => {
+            const na = parseInt(a.serial);
+            const nb = parseInt(b.serial);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return String(a.serial).localeCompare(String(b.serial));
+        });
+
+        sortedList.forEach(team => {
+            const optSerial = document.createElement('option');
+            optSerial.value = team.serial;
+            optSerial.textContent = team.serial;
+            serialSelect.appendChild(optSerial);
+            
+            const optName = document.createElement('option');
+            optName.value = team.name;
+            optName.textContent = isImage(team.name) ? `序号 ${team.serial} - [图片队伍]` : team.name;
+            teamSelect.appendChild(optName);
+        });
+
+        // Restore selection if valid
+        if (currentSerial && sortedList.some(t => t.serial === currentSerial)) serialSelect.value = currentSerial;
+        if (currentTeam && sortedList.some(t => t.name === currentTeam)) teamSelect.value = currentTeam;
+    }
+
+    function syncTeamInput(source) {
+        const serialSelect = document.getElementById('serialInput');
+        const teamSelect = document.getElementById('teamInput');
+        
+        if (source === 'serial') {
+            const serial = serialSelect.value;
+            const team = teamList.find(t => t.serial === serial);
+            if (team) {
+                teamSelect.value = team.name;
+            } else {
+                teamSelect.value = "";
+            }
+        } else if (source === 'team') {
+            const name = teamSelect.value;
+            const team = teamList.find(t => t.name === name);
+            if (team) {
+                serialSelect.value = team.serial;
+            } else {
+                serialSelect.value = "";
+            }
+        }
+    }
+
+    // Team Management
+    let teamList = [];
+    let currentTeamImageData = null;
+    let currentEditingTeamId = null;
+
+    function isImage(str) {
+        return typeof str === 'string' && str.startsWith('data:image');
+    }
+
+    function handleTeamImageSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            currentTeamImageData = e.target.result;
+            // Update preview
+            document.getElementById('teamNamePreviewImg').src = currentTeamImageData;
+            document.getElementById('teamNamePreview').style.display = 'flex';
+            document.getElementById('teamName').disabled = true;
+            document.getElementById('teamName').placeholder = "(已选择图片队名)";
+            document.getElementById('teamName').value = "";
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function clearTeamImage() {
+        currentTeamImageData = null;
+        document.getElementById('teamNameImageInput').value = ''; // Reset file input
+        document.getElementById('teamNamePreview').style.display = 'none';
+        document.getElementById('teamName').disabled = false;
+        document.getElementById('teamName').placeholder = "队伍名称";
+    }
+
+    function editTeam(id) {
+        const team = teamList.find(t => t.id === id);
+        if (!team) return;
+
+        currentEditingTeamId = id;
+        
+        // Populate inputs
+        document.getElementById('teamSerial').value = team.serial;
+        document.getElementById('teamMembers').value = team.members.join(' ');
+        document.getElementById('teamTime').value = team.time;
+        
+        // Handle name (text or image)
+        if (isImage(team.name)) {
+            currentTeamImageData = team.name;
+            document.getElementById('teamNamePreviewImg').src = currentTeamImageData;
+            document.getElementById('teamNamePreview').style.display = 'flex';
+            document.getElementById('teamName').disabled = true;
+            document.getElementById('teamName').placeholder = "(已选择图片队名)";
+            document.getElementById('teamName').value = "";
+        } else {
+            clearTeamImage();
+            document.getElementById('teamName').value = team.name;
+        }
+
+        // Update UI state
+        document.getElementById('saveTeamBtn').textContent = '更新队伍';
+        document.getElementById('saveTeamBtn').style.backgroundColor = 'var(--xmas-green)';
+        document.getElementById('cancelTeamEditBtn').style.display = 'inline-block';
+        
+        // Scroll to form
+        document.querySelector('.toolbar').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelTeamEdit() {
+        currentEditingTeamId = null;
+        
+        // Clear inputs
+        document.getElementById('teamSerial').value = '';
+        document.getElementById('teamName').value = '';
+        document.getElementById('teamMembers').value = '';
+        document.getElementById('teamTime').value = '';
+        clearTeamImage();
+        
+        // Reset UI state
+        document.getElementById('saveTeamBtn').textContent = '保存队伍';
+        document.getElementById('saveTeamBtn').style.backgroundColor = ''; // Reset to default (usually inherited or empty)
+        document.getElementById('cancelTeamEditBtn').style.display = 'none';
+    }
+    
+    function saveTeam() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        const serial = document.getElementById('teamSerial').value.trim();
+        let name = document.getElementById('teamName').value.trim();
+        const membersStr = document.getElementById('teamMembers').value.trim();
+        const time = document.getElementById('teamTime').value.trim();
+        
+        // Use image if selected
+        if (currentTeamImageData) {
+            name = currentTeamImageData;
+        }
+
+        if (!serial || !name || !time) {
+            alert('请填写序号、队伍名称(或上传图片)和预约时间');
+            return;
+        }
+        
+        const members = membersStr.split(/[,，\s]+/).filter(m => m);
+        
+        const teamData = {
+            serial: serial,
+            name: name,
+            members: members,
+            count: members.length,
+            time: time,
+            sortKey: parseTimeKey(time)
+        };
+        
+        if (currentEditingTeamId) {
+            // Editing existing team
+            const index = teamList.findIndex(t => t.id === currentEditingTeamId);
+            if (index !== -1) {
+                // Check serial conflict with OTHER teams
+                const conflict = teamList.find(t => t.serial === serial && t.id !== currentEditingTeamId);
+                if (conflict) {
+                    alert(`序号 ${serial} 已被队伍 "${isImage(conflict.name) ? '[图片队伍]' : conflict.name}" 占用，请更换序号`);
+                    return;
+                }
+                
+                // Update
+                teamList[index] = {
+                    ...teamList[index],
+                    ...teamData
+                };
+                cancelTeamEdit();
+            }
+        } else {
+            // Adding new team
+            const team = {
+                id: Date.now().toString(),
+                ...teamData
+            };
+            
+            // Check if serial exists
+            const existIdx = teamList.findIndex(t => t.serial === serial);
+            if (existIdx >= 0) {
+                if (confirm(`序号 ${serial} 已存在 (${isImage(teamList[existIdx].name) ? '[图片队名]' : teamList[existIdx].name})，是否覆盖？`)) {
+                    teamList[existIdx] = {
+                        ...teamList[existIdx], // Keep ID
+                        ...teamData
+                    };
+                } else {
+                    return;
+                }
+            } else {
+                teamList.push(team);
+            }
+            
+            // Clear inputs
+            document.getElementById('teamSerial').value = '';
+            document.getElementById('teamName').value = '';
+            document.getElementById('teamMembers').value = '';
+            document.getElementById('teamTime').value = '';
+            clearTeamImage();
+        }
+        
+        renderTeamList();
+        upsertTeams([teamData]);
+    }
+    
+    function clearTeamData() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if (confirm('确定清空所有队伍数据吗？')) {
+            teamList = [];
+            if (supabaseClient && currentYear) supabaseClient.from('teams').delete().eq('year', currentYear);
+            renderTeamList();
+        }
+    }
+    
+    function parseTimeKey(timeStr) {
+        // Format: 11.24(周一)下午18:00
+        // Regex to find Month.Day and Hour:Minute
+        // Support variants: 11.24, 11月24日, 18:00, 18点00
+        try {
+            const dateMatch = timeStr.match(/(\d{1,2})[.\月](\d{1,2})/);
+            // Support : ： or 点 for time separator
+            const timeMatch = timeStr.match(/(\d{1,2})[:：点](\d{0,2})/);
+            
+            let val = 0;
+            if (dateMatch) {
+                val += parseInt(dateMatch[1]) * 1000000; // Month
+                val += parseInt(dateMatch[2]) * 10000;   // Day
+            }
+            if (timeMatch) {
+                let hour = parseInt(timeMatch[1]);
+                // If minute part is empty (e.g. "18点"), treat as 0
+                let minute = timeMatch[2] ? parseInt(timeMatch[2]) : 0;
+                if (isNaN(minute)) minute = 0;
+                
+                val += hour * 100;
+                val += minute;
+            }
+            return val;
+        } catch (e) {
+            return 0;
+        }
+    }
+    
+    function getDayLabel(timeStr) {
+        // Extract "11.24(周一)" part
+        const match = timeStr.match(/(\d{1,2}[.\月]\d{1,2}(?:\(周[一二三四五六日]\))?)/);
+        return match ? match[1] : '其他时间';
+    }
+
+    function renderTeamList() {
+        const container = document.getElementById('teamListContainer');
+        container.innerHTML = '';
+        
+        // Sort by time
+        teamList.sort((a, b) => a.sortKey - b.sortKey);
+        
+        // Group by Day
+        const groups = {};
+        teamList.forEach(team => {
+            const day = getDayLabel(team.time);
+            if (!groups[day]) groups[day] = [];
+            groups[day].push(team);
+        });
+        
+        Object.keys(groups).forEach(day => {
+            const groupDiv = document.createElement('div');
+            
+            const header = document.createElement('div');
+            header.className = 'team-group-header';
+            header.textContent = day;
+            groupDiv.appendChild(header);
+            
+            const table = document.createElement('table');
+            table.className = 'team-list-table';
+            table.innerHTML = `
+                <thead>
+                    <tr style="background:#fff; border-bottom:2px solid #eee; font-size:12px; color:#888;">
+                        <th style="text-align:left; width:80px;">时间</th>
+                        <th style="text-align:left; width:60px;">序号</th>
+                        <th style="text-align:left; width:150px;">队伍名称</th>
+                        <th style="text-align:left;">成员</th>
+                        <th style="text-align:center; width:50px;">人数</th>
+                        ${isAdmin ? '<th style="text-align:center; width:60px;">操作</th>' : ''}
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+            
+            const tbody = table.querySelector('tbody');
+            groups[day].forEach(team => {
+                const tr = document.createElement('tr');
+                // Extract just time part for display if possible, or show full?
+                // User requirement: "列表按照预约时间排序"
+                // Let's show the time part (e.g. 18:00) in first col
+                const timeMatch = team.time.match(/\d{1,2}[:：]\d{1,2}/);
+                const shortTime = timeMatch ? timeMatch[0] : team.time;
+                
+                const membersHtml = team.members.map(m => `<span class="tag">${m}</span>`).join('');
+                
+                const nameDisplay = isImage(team.name) ? `<img src="${team.name}" style="height:30px; vertical-align:middle;">` : team.name;
+
+                tr.innerHTML = `
+                    <td>${shortTime}</td>
+                    <td><span style="font-weight:bold; color:#007bff;">${team.serial}</span></td>
+                    <td>${nameDisplay}</td>
+                    <td>${membersHtml}</td>
+                    <td style="text-align:center;">${team.count}</td>
+                    ${isAdmin ? `<td style="text-align:center;">\n                        <button onclick=\"editTeam('${team.id}')\" style=\"padding:2px 5px; font-size:12px; background:#007bff; margin-right:5px;\">编辑</button>\n                        <button onclick=\"deleteTeam('${team.id}')\" style=\"padding:2px 5px; font-size:12px; background:#dc3545;\">删除</button>\n                    </td>` : ''}
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            groupDiv.appendChild(table);
+            container.appendChild(groupDiv);
+        });
+    }
+    
+    function deleteTeam(id) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if (confirm('确定删除此队伍吗？')) {
+            const del = teamList.find(t => t.id === id);
+            teamList = teamList.filter(t => t.id !== id);
+            if (del) deleteTeamInCloud(del.serial);
+            renderTeamList();
+        }
+    }
+
+    function exportTeams() {
+        if (teamList.length === 0) {
+            alert('没有队伍数据可导出');
+            return;
+        }
+
+        // Sort by time (same as display)
+        const sortedList = [...teamList].sort((a, b) => a.sortKey - b.sortKey);
+
+        const data = sortedList.map(team => {
+            return {
+                "序号": team.serial,
+                "队伍名称": isImage(team.name) ? "[图片队伍]" : team.name,
+                "成员": team.members.join(', '),
+                "人数": team.count,
+                "预约时间": team.time
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "队伍列表");
+
+        // Generate filename
+        const date = new Date();
+        const dateStr = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+        const timeStr = `${date.getHours().toString().padStart(2,'0')}${date.getMinutes().toString().padStart(2,'0')}`;
+        const filename = `队伍列表_${dateStr}_${timeStr}.xlsx`;
+
+        try {
+            XLSX.writeFile(wb, filename);
+        } catch (e) {
+            alert('导出失败: ' + e.message);
+        }
+    }
+
+    function handleTeamFileUpload(event) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                
+                let successCount = 0;
+                
+                // Analyze header to find columns
+                let startRow = 0;
+                let colSerial = -1;
+                let colName = -1;
+                let colTime = -1;
+                let headerRow = [];
+                
+                // Find header row
+                for(let i=0; i<Math.min(20, jsonData.length); i++) { // Increased search range
+                    // Handle sparse arrays by using Array.from to fill holes with undefined, then map
+                    const rawRow = jsonData[i] || [];
+                    const row = Array.from(rawRow).map(c => String(c || '').trim());
+                    
+                    // Check for key columns
+                    if (row.some(c => c.includes('队伍名称') || c.includes('Team'))) {
+                        startRow = i + 1;
+                        headerRow = row;
+                        colSerial = row.findIndex(c => c.includes('序号') || c.includes('No') || c.includes('ID'));
+                        colName = row.findIndex(c => c.includes('队伍名称') || c.includes('Team'));
+                        colTime = row.findIndex(c => c.includes('预约时间') || c.includes('Time') || c.includes('Date'));
+                        break;
+                    }
+                }
+                
+                if (colName === -1) {
+                    throw new Error("未找到'队伍名称'列，请检查表头");
+                }
+                if (colTime === -1) {
+                    // Try to guess if not found explicitly? 
+                    // Maybe look for a column with date-like strings in first data row?
+                    // For now, let's assume it exists or warn.
+                    console.warn("未找到'预约时间'列，将跳过时间解析");
+                }
+                
+                for (let i = startRow; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || row.length === 0) continue;
+                    
+                    // Helper to safely get cell value
+                    const getVal = (idx) => {
+                        if (idx < 0 || idx >= row.length) return '';
+                        return String(row[idx] || '').trim().replace(/[\r\n]+/g, ' '); // Replace newlines with space
+                    };
+                    
+                    const serial = colSerial !== -1 ? getVal(colSerial) : '';
+                    let name = getVal(colName);
+                    const time = colTime !== -1 ? getVal(colTime) : '';
+                    
+                    if (!name && serial) {
+                        name = "(需补充图片)";
+                    }
+                    
+                    if (!name) continue; // Skip if no name
+                    
+                    // Collect members
+                    const members = [];
+                    // Scan cols between Name and Time (or end of row if Time not found)
+                    const endCol = colTime !== -1 ? colTime : row.length;
+                    
+                    if (colName < endCol) {
+                        for (let j = colName + 1; j < endCol; j++) {
+                            // Check header for "Count" or "人数"
+                            // But be careful: sometimes users put names in columns labeled "人数" (e.g. "领队人数" but filled with name)
+                            // So only skip if header implies count AND value looks like a number
+                            const isCountHeader = headerRow[j] && (headerRow[j].includes('人数') || headerRow[j].includes('Count'));
+                            
+                            const val = getVal(j);
+                            
+                            if (isCountHeader) {
+                                // If header says count, skip only if value is numeric or like "4人"
+                                // If it's a name (NaN), keep it
+                                if (!isNaN(val) || /^\d+\s*人?$/.test(val)) {
+                                    continue;
+                                }
+                            }
+                            
+                            // Skip empty, "人数" literal in data (unlikely if header check works), or pure numbers (double check)
+                            if (val && !val.includes('人数')) {
+                                // Heuristic: Member names are usually not single digits. 
+                                // But strictly, we should rely on header check.
+                                // If header check passed, we accept it unless it looks very wrong.
+                                // Let's keep the length check but be careful.
+                                if (isNaN(val) || val.length > 1) {
+                                    members.push(val);
+                                }
+                            }
+                        }
+                    }
+                    
+                    const newTeam = {
+                        id: Date.now().toString() + Math.random(),
+                        serial: serial || (teamList.length + 1).toString(), // Fallback serial
+                        name: name,
+                        members: members,
+                        count: members.length,
+                        time: time,
+                        sortKey: parseTimeKey(time)
+                    };
+                    teamList.push(newTeam);
+                    successCount++;
+                }
+                
+                renderTeamList();
+                upsertTeams(teamList);
+                alert(`成功导入 ${successCount} 支队伍`);
+                closeModal('teamImportModal');
+                
+            } catch (err) {
+                console.error(err);
+                alert('导入失败: ' + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    }
+
+
+    // --- Wish Calculation Functions ---
+
+    let currentEditingWishSerial = null;
+
+    function renderWishDropdowns() {
+        const serialSelect = document.getElementById('wishSerialInput');
+        const teamSelect = document.getElementById('wishTeamInput');
+        
+        // Save current selection
+        const currentSerial = serialSelect.value;
+        const currentTeam = teamSelect.value;
+
+        serialSelect.innerHTML = '<option value="">序号</option>';
+        teamSelect.innerHTML = '<option value="">队伍名称</option>';
+        
+        // Sort by serial
+        const sortedList = [...teamList].sort((a, b) => {
+            const na = parseInt(a.serial);
+            const nb = parseInt(b.serial);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return String(a.serial).localeCompare(String(b.serial));
+        });
+
+        sortedList.forEach(team => {
+            const optSerial = document.createElement('option');
+            optSerial.value = team.serial;
+            optSerial.textContent = team.serial;
+            serialSelect.appendChild(optSerial);
+            
+            const optName = document.createElement('option');
+            optName.value = team.name;
+            optName.textContent = isImage(team.name) ? `序号 ${team.serial} - [图片队伍]` : team.name;
+            teamSelect.appendChild(optName);
+        });
+
+        // Restore selection if valid
+        if (currentSerial && sortedList.some(t => t.serial === currentSerial)) serialSelect.value = currentSerial;
+        if (currentTeam && sortedList.some(t => t.name === currentTeam)) teamSelect.value = currentTeam;
+    }
+
+    function syncWishInput(source) {
+        const serialSelect = document.getElementById('wishSerialInput');
+        const teamSelect = document.getElementById('wishTeamInput');
+        
+        if (source === 'serial') {
+            const selectedSerial = serialSelect.value;
+            const team = teamList.find(t => t.serial === selectedSerial);
+            if (team) {
+                teamSelect.value = team.name;
+            } else {
+                teamSelect.value = "";
+            }
+        } else {
+            const selectedTeam = teamSelect.value;
+            const team = teamList.find(t => t.name === selectedTeam);
+            if (team) {
+                serialSelect.value = team.serial;
+            } else {
+                serialSelect.value = "";
+            }
+        }
+    }
+
+    function saveWish() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        const serial = document.getElementById('wishSerialInput').value;
+        const teamName = document.getElementById('wishTeamInput').value;
+        
+        if (!serial || !teamName) {
+            alert('请选择队伍');
+            return;
+        }
+
+        const w1 = parseInt(document.getElementById('wish1').value) || 0;
+        const w2 = parseInt(document.getElementById('wish2').value) || 0;
+        const w3 = parseInt(document.getElementById('wish3').value) || 0;
+        const w4 = parseInt(document.getElementById('wish4').value) || 0;
+        const w5 = parseInt(document.getElementById('wish5').value) || 0;
+        
+        const total = w1 + w2 + w3 + w4 + w5;
+        
+        const wishData = {
+            serial: serial,
+            team: teamName,
+            wishes: [w1, w2, w3, w4, w5],
+            total: total
+        };
+        
+        // Check if exists
+        const index = wishList.findIndex(w => w.serial === serial);
+        if (index !== -1) {
+            wishList[index] = wishData;
+        } else {
+            wishList.push(wishData);
+        }
+        
+        renderWishRanking();
+        upsertWishes([wishData]);
+        cancelWishEdit();
+    }
+
+    function cancelWishEdit() {
+        document.getElementById('wishSerialInput').value = "";
+        document.getElementById('wishTeamInput').value = "";
+        document.getElementById('wish1').value = "";
+        document.getElementById('wish2').value = "";
+        document.getElementById('wish3').value = "";
+        document.getElementById('wish4').value = "";
+        document.getElementById('wish5').value = "";
+        
+        document.getElementById('saveWishBtn').textContent = '保存数据';
+        document.getElementById('cancelWishEditBtn').style.display = 'none';
+        currentEditingWishSerial = null;
+    }
+
+    function editWish(serial) {
+        const wish = wishList.find(w => w.serial === serial);
+        if (!wish) return;
+        
+        document.getElementById('wishSerialInput').value = wish.serial;
+        // Trigger sync to set team name (or set manually)
+        // syncWishInput('serial'); 
+        // Better set manually to ensure correct
+        const team = teamList.find(t => t.serial === serial);
+        if (team) document.getElementById('wishTeamInput').value = team.name;
+        else document.getElementById('wishTeamInput').value = wish.team; // Fallback
+        
+        document.getElementById('wish1').value = wish.wishes[0] || '';
+        document.getElementById('wish2').value = wish.wishes[1] || '';
+        document.getElementById('wish3').value = wish.wishes[2] || '';
+        document.getElementById('wish4').value = wish.wishes[3] || '';
+        document.getElementById('wish5').value = wish.wishes[4] || '';
+        
+        document.getElementById('saveWishBtn').textContent = '更新数据';
+        document.getElementById('cancelWishEditBtn').style.display = 'inline-block';
+        
+        currentEditingWishSerial = serial;
+    }
+
+    function deleteWish(serial) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if(confirm('确定删除该队伍的心愿数据吗？')) {
+            wishList = wishList.filter(w => w.serial !== serial);
+            deleteWishInCloud(serial);
+            renderWishRanking();
+        }
+    }
+
+    function clearWishData() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if(confirm('确定清空所有心愿数据吗？')) {
+            wishList = [];
+            if (supabaseClient && currentYear) supabaseClient.from('wishes').delete().eq('year', currentYear);
+            renderWishRanking();
+        }
+    }
+
+    function renderWishRanking() {
+        const tbody = document.querySelector('#wishRankingTable tbody');
+        tbody.innerHTML = '';
+        
+        // Sort by total wishes (descending)
+        wishList.sort((a, b) => b.total - a.total);
+        
+        let effectiveRank = 1;
+        
+        wishList.forEach((entry, index) => {
+             // Tie handling
+             if (index > 0 && entry.total === wishList[index-1].total) {
+                 // Tie
+             } else {
+                 effectiveRank = index + 1;
+             }
+             
+             const points = totalTeams - effectiveRank + 1;
+             entry.rank = effectiveRank;
+             entry.points = points;
+             
+             const tr = document.createElement('tr');
+             
+             const nameDisplay = isImage(entry.team) ? `<img src="${entry.team}" style="height:30px; vertical-align:middle;">` : entry.team;
+             
+            tr.innerHTML = `
+               <td>${effectiveRank}</td>
+               <td>${entry.serial}</td>
+               <td>${nameDisplay}</td>
+               <td>${entry.wishes[0]}</td>
+               <td>${entry.wishes[1]}</td>
+               <td>${entry.wishes[2]}</td>
+               <td>${entry.wishes[3]}</td>
+               <td>${entry.wishes[4]}</td>
+               <td style="font-weight:bold;">${entry.total}</td>
+               <td style="color:${points > 0 ? '#28a745' : 'inherit'}; font-weight:bold;">${points}</td>
+               ${isAdmin ? `<td>\n                   <button onclick=\"editWish('${entry.serial}')\" style=\"padding:2px 5px; font-size:12px; background:#007bff; margin-right:5px;\">编辑</button>\n                   <button onclick=\"deleteWish('${entry.serial}')\" style=\"padding:2px 5px; font-size:12px; background:#dc3545;\">删除</button>\n               </td>` : ''}
+            `;
+             tbody.appendChild(tr);
+        });
+    }
+
+    function handleWishFileUpload(event) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        const file = event.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                
+                let successCount = 0;
+                let startRow = 0;
+                let colSerial = -1;
+                let colName = -1;
+                let colW1 = -1;
+                
+                // Find headers
+                for(let i=0; i<Math.min(20, jsonData.length); i++) {
+                    const rawRow = jsonData[i] || [];
+                    const row = Array.from(rawRow).map(c => String(c || '').trim());
+                    if (row.some(c => c.includes('序号') || c.includes('队伍名称'))) {
+                        startRow = i + 1;
+                        colSerial = row.findIndex(c => c.includes('序号'));
+                        colName = row.findIndex(c => c.includes('队伍名称'));
+                        colW1 = row.findIndex(c => c.includes('1颗') || c.includes('1星'));
+                        break;
+                    }
+                }
+                
+                if (colSerial === -1 || colName === -1) {
+                    throw new Error("未找到'序号'或'队伍名称'列");
+                }
+                
+                for (let i = startRow; i < jsonData.length; i++) {
+                    const rawRow = jsonData[i] || [];
+                    const row = Array.from(rawRow).map(c => String(c || '').trim());
+                    
+                    const serial = row[colSerial];
+                    let team = row[colName];
+                    
+                    if (!serial && !team) continue;
+                    
+                    // Normalize team name
+                    if (teamList.length > 0) {
+                         const normalize = str => String(str || '').replace(/\s+/g, '');
+                         const canonical = teamList.find(t => String(t.serial) === String(serial) && normalize(t.name) === normalize(team));
+                         if (canonical) team = canonical.name;
+                    }
+                    
+                    const wishes = [0, 0, 0, 0, 0];
+                    if (colW1 !== -1) {
+                        for (let j = 0; j < 5; j++) {
+                            if (colW1 + j < rawRow.length) {
+                                const val = parseInt(rawRow[colW1 + j]);
+                                wishes[j] = isNaN(val) ? 0 : val;
+                            }
+                        }
+                    }
+                    
+                    const total = wishes.reduce((a,b) => a+b, 0);
+                    
+                    // Update or Add
+                    const existingIdx = wishList.findIndex(w => w.serial === serial);
+                    const entry = {
+                        serial: serial,
+                        team: team,
+                        wishes: wishes,
+                        total: total
+                    };
+                    
+                    if (existingIdx !== -1) {
+                        wishList[existingIdx] = entry;
+                    } else {
+                        wishList.push(entry);
+                    }
+                    successCount++;
+                }
+                
+                renderWishRanking();
+                upsertWishes(wishList);
+                alert(`成功导入 ${successCount} 条心愿数据`);
+                closeModal('wishImportModal');
+                
+            } catch (err) {
+                console.error(err);
+                alert('导入失败: ' + err.message);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        event.target.value = '';
+    }
+
+    function exportWishRanking() {
+        if (wishList.length === 0) {
+            alert('没有数据可导出');
+            return;
+        }
+        
+        const data = wishList.map(entry => {
+            return {
+                "排名": entry.rank,
+                "序号": entry.serial,
+                "队伍名称": isImage(entry.team) ? "[图片队伍]" : entry.team,
+                "1颗心愿": entry.wishes[0],
+                "2颗心愿": entry.wishes[1],
+                "3颗心愿": entry.wishes[2],
+                "4颗心愿": entry.wishes[3],
+                "5颗心愿": entry.wishes[4],
+                "心愿总计": entry.total,
+                "积分": entry.points
+            };
+        });
+        
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "心愿排行");
+        
+        try {
+             XLSX.writeFile(wb, `心愿排行_${new Date().getTime()}.xlsx`);
+        } catch (e) {
+             alert('导出失败: ' + e.message);
+        }
+    }
+
+    async function init() {
+        initHandTypeFilter();
         generateDeck();
         renderDropdowns();
-        
+        updateCalculatorDropdowns();
+        renderWishDropdowns();
+        currentYear = new Date().getFullYear();
+        await initSupabase();
+        await loadYearData(currentYear);
+        updateHeaderYear();
+        applyRoleUI();
         // 点击外部关闭下拉菜单
         document.addEventListener('click', function(event) {
             if (!event.target.closest('.card-input-group')) {
@@ -508,15 +2372,24 @@
                 event.target.style.display = "none";
             }
         });
+        openYearModal();
     }
 
     // Modal functions
     function openModal(modalId) {
-        document.getElementById(modalId).style.display = "block";
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = "block";
+        } else {
+            console.error("Modal not found:", modalId);
+        }
     }
 
     function closeModal(modalId) {
-        document.getElementById(modalId).style.display = "none";
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = "none";
+        }
     }
 
     function generateDeck() {
@@ -609,19 +2482,11 @@
         trigger.classList.add('filled');
         
         closeAllDropdowns();
-        updateTextInput();
+        // updateTextInput(); // Removed
     }
 
     function updateTextInput() {
-        const parts = [];
-        for (let i = 1; i <= 5; i++) {
-            if (selectedCards[i]) {
-                parts.push(selectedCards[i].fullName); // Use fullName (e.g., ♠A)
-            }
-        }
-        // Only update if text input is empty or we are syncing from valid dropdowns
-        // Actually, better to always sync to show what is selected
-        document.getElementById('cardInput').value = parts.join(' ');
+        // Removed
     }
 
     function filterCards(index) {
@@ -644,6 +2509,7 @@
     let currentEditingId = null;
 
     function handleFileUpload(event) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         const file = event.target.files[0];
         if (!file) return;
 
@@ -701,6 +2567,7 @@
     }
 
     function processBulkImport(isFromFile = false) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         const input = document.getElementById('bulkInput').value.trim();
         if (!input) return;
 
@@ -815,7 +2682,22 @@
             }
 
             const serial = parts[colMap.id];
-            const team = parts[colMap.team];
+            const rawTeam = parts[colMap.team];
+            let finalTeamName = rawTeam;
+            
+            // Validate against teamList if it has data
+            if (teamList.length > 0) {
+                const serialMatch = teamList.find(t => String(t.serial) === String(serial));
+                
+                if (serialMatch) {
+                    // Found by serial - use the canonical name from the system
+                    finalTeamName = serialMatch.name;
+                } else {
+                    // Serial not found in system
+                    errors.push(`第 ${index+1} 行错误: 序号 ${serial} 不在队伍管理列表中`);
+                    return;
+                }
+            }
             
             let cardsStr = '';
             if (foundHeader) {
@@ -829,22 +2711,24 @@
                 const cards = parseCards(cardsStr);
                 const result = evaluateHand(cards);
                 
-                handHistory.push({
+                const newHand = {
                     id: Date.now().toString() + Math.random(), // Ensure unique ID
                     cards: cards,
                     serial: serial,
-                    team: team,
+                    team: finalTeamName,
                     ...result
-                });
+                };
+                handHistory.push(newHand);
                 successCount++;
             } catch (e) {
-                errors.push(`第 ${index+1} 行 (${team}) 错误: ${e.message}`);
+                errors.push(`第 ${index+1} 行 (${finalTeamName}) 错误: ${e.message}`);
             }
         });
 
         // Re-sort and update table
         handHistory.sort((a, b) => b.score - a.score);
         updateTable();
+        upsertHands(handHistory);
         
         // Show result
         if (errors.length > 0) {
@@ -864,48 +2748,26 @@
     }
 
     function processHand() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         const errorMsg = document.getElementById('errorMsg');
-        const inputVal = document.getElementById('cardInput').value.trim();
+        // const inputVal = document.getElementById('cardInput').value.trim(); // Removed
         const serialVal = document.getElementById('serialInput').value.trim();
         const teamVal = document.getElementById('teamInput').value.trim();
         
         errorMsg.style.display = 'none';
 
         try {
-            if (!serialVal) throw new Error("请输入序号");
-            if (!teamVal) throw new Error("请输入队伍名称");
+            if (!serialVal) throw new Error("请选择序号");
+            if (!teamVal) throw new Error("请选择队伍名称");
 
             let currentHand = [];
 
-            // Strategy: 
-            // 1. If text input has changed manually (we can't easily detect "manual" vs "auto" here without more state),
-            //    let's try to parse text first if it looks valid.
-            // 2. Or, just parse text input always if it's not empty. 
-            //    Since selectCard updates text input, text input should be the source of truth if populated.
-            
-            if (inputVal) {
-                currentHand = parseCards(inputVal);
-                // Sync back to UI (dropdowns)
-                currentHand.forEach((card, i) => {
-                    // We need to find this card in our deck to get the exact object ref if possible, 
-                    // or just use the object returned by parseCards (which should be from deck)
-                    // parseCards now returns objects from deck.
-                    selectedCards[i+1] = card;
-                    
-                    // Update trigger UI manually
-                    const trigger = document.getElementById(`trigger${i+1}`);
-                    trigger.innerHTML = `<span class="card ${card.color === 'red' ? 'suit-red' : 'suit-black'}">${card.suit}${card.rankLabel}</span> ▾`;
-                    trigger.classList.add('filled');
-                });
-                // Clear remaining slots if any (e.g. input had 3 cards) - actually parseCards throws if not 5
-            } else {
-                // Use dropdowns
-                for (let i = 1; i <= 5; i++) {
-                    if (!selectedCards[i]) {
-                        throw new Error(`请选择第 ${i} 张牌`);
-                    }
-                    currentHand.push(selectedCards[i]);
+            // Use dropdowns
+            for (let i = 1; i <= 5; i++) {
+                if (!selectedCards[i]) {
+                    throw new Error(`请选择第 ${i} 张牌`);
                 }
+                currentHand.push(selectedCards[i]);
             }
             
             // Check duplicates
@@ -930,14 +2792,9 @@
                 }
                 cancelEdit(); // Reset UI
             } else {
-                // Add new
-                handHistory.push({
-                    id: Date.now().toString(), // Simple unique ID
-                    cards: currentHand,
-                    serial: serialVal,
-                    team: teamVal,
-                    ...result
-                });
+                const newHand = { id: Date.now().toString(), cards: currentHand, serial: serialVal, team: teamVal, ...result };
+                handHistory.push(newHand);
+                upsertHands([newHand]);
             }
 
             // 排序：分数从高到低
@@ -947,7 +2804,7 @@
             
             // Clear inputs if not editing (if editing, cancelEdit already cleared)
             if (!currentEditingId) {
-                document.getElementById('cardInput').value = '';
+                // document.getElementById('cardInput').value = ''; // Removed
                 document.getElementById('serialInput').value = '';
                 document.getElementById('teamInput').value = '';
                 // Clear dropdowns
@@ -1171,11 +3028,11 @@
              trigger.innerHTML = `<span class="card ${card.color === 'red' ? 'suit-red' : 'suit-black'}">${card.suit}${card.rankLabel}</span> ▾`;
              trigger.classList.add('filled');
         });
-        updateTextInput();
+        // updateTextInput(); // Removed
 
         // Update UI state
         document.getElementById('actionBtn').textContent = '更新';
-        document.getElementById('actionBtn').style.backgroundColor = '#28a745';
+        document.getElementById('actionBtn').style.backgroundColor = 'var(--xmas-light-green)';
         document.getElementById('cancelBtn').style.display = 'inline-block';
         
         // Scroll to top
@@ -1188,7 +3045,7 @@
         // Clear inputs
         document.getElementById('serialInput').value = '';
         document.getElementById('teamInput').value = '';
-        document.getElementById('cardInput').value = '';
+        // document.getElementById('cardInput').value = ''; // Removed
         
         // Clear dropdowns
         for (let i = 1; i <= 5; i++) {
@@ -1200,14 +3057,16 @@
 
         // Reset UI state
         document.getElementById('actionBtn').textContent = '计算 & 排名';
-        document.getElementById('actionBtn').style.backgroundColor = '#007bff';
+        document.getElementById('actionBtn').style.backgroundColor = 'var(--xmas-green)';
         document.getElementById('cancelBtn').style.display = 'none';
         document.getElementById('errorMsg').style.display = 'none';
     }
 
     function clearData() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         if (confirm('确定要清空所有数据吗？此操作不可恢复。')) {
             handHistory = [];
+            if (supabaseClient && currentYear) supabaseClient.from('hands').delete().eq('year', currentYear);
             cancelEdit();
             updateTable();
         }
@@ -1242,7 +3101,14 @@
             
             // 队伍名称
             const tdTeam = document.createElement('td');
-            tdTeam.textContent = entry.team;
+            if (isImage(entry.team)) {
+                const img = document.createElement('img');
+                img.src = entry.team;
+                img.style.height = '30px';
+                tdTeam.appendChild(img);
+            } else {
+                tdTeam.textContent = entry.team;
+            }
             tr.appendChild(tdTeam);
 
             // 牌型名称
@@ -1269,7 +3135,7 @@
             
             tdPoints.textContent = points;
             tdPoints.style.fontWeight = 'bold';
-            tdPoints.style.color = points > 0 ? '#28a745' : '#dc3545';
+            tdPoints.style.color = points > 0 ? 'var(--xmas-green)' : 'var(--xmas-red)';
             tr.appendChild(tdPoints);
 
             // 分数 (Debug用，也可以显示)
@@ -1278,14 +3144,16 @@
             tr.appendChild(tdScore);
             
             // 操作
-            const tdAction = document.createElement('td');
-            const editBtn = document.createElement('button');
-            editBtn.textContent = '编辑';
-            editBtn.style.padding = '5px 10px';
-            editBtn.style.fontSize = '12px';
-            editBtn.onclick = () => editEntry(entry.id);
-            tdAction.appendChild(editBtn);
-            tr.appendChild(tdAction);
+            if (isAdmin) {
+                const tdAction = document.createElement('td');
+                const editBtn = document.createElement('button');
+                editBtn.textContent = '编辑';
+                editBtn.style.padding = '5px 10px';
+                editBtn.style.fontSize = '12px';
+                editBtn.onclick = () => editEntry(entry.id);
+                tdAction.appendChild(editBtn);
+                tr.appendChild(tdAction);
+            }
 
             tbody.appendChild(tr);
         });
@@ -1315,7 +3183,7 @@
             return {
                 "排名": effectiveRank,
                 "序号": entry.serial,
-                "队伍名称": entry.team,
+                "队伍名称": isImage(entry.team) ? "[图片队伍]" : entry.team,
                 "牌型名称": entry.handTypeName,
                 "牌面": cardStr,
                 "积分": points,
