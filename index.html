@@ -522,114 +522,6 @@
                 width: 100% !important;
                 min-width: 0;
             }
-
-            /* Mobile Card Table Transformation */
-            .mobile-card-table {
-                display: block;
-                width: 100%;
-            }
-            .mobile-card-table thead {
-                display: none;
-            }
-            .mobile-card-table tbody, .mobile-card-table tr, .mobile-card-table td {
-                display: block;
-                width: 100%;
-                box-sizing: border-box;
-            }
-            .mobile-card-table tr {
-                display: flex;
-                flex-direction: column;
-                margin-bottom: 15px;
-                border: 1px solid #eee;
-                border-radius: 12px;
-                background: #fff;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-                padding: 0;
-                overflow: hidden;
-            }
-            
-            /* Make Team Name the Header */
-            .mobile-card-table td.team-name-cell {
-                order: -1;
-                background: linear-gradient(to right, #f8f9fa, #fff);
-                border-bottom: 1px solid #eee;
-                padding: 12px 15px;
-                font-weight: bold;
-                font-size: 16px;
-                color: #333;
-                text-align: left;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-            .mobile-card-table td.team-name-cell::after {
-                content: "队伍";
-                font-size: 12px;
-                color: #999;
-                font-weight: normal;
-                background: #f1f1f1;
-                padding: 2px 6px;
-                border-radius: 4px;
-            }
-            .mobile-card-table td.team-name-cell img {
-                max-width: 100%;
-                height: auto !important;
-                border-radius: 4px;
-            }
-            
-            /* Other cells */
-            .mobile-card-table td:not(.team-name-cell) {
-                padding: 10px 15px;
-                border-bottom: 1px solid #f9f9f9;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                text-align: right;
-                font-size: 14px;
-            }
-            
-            /* Hide border on last cell */
-            .mobile-card-table td:last-child {
-                border-bottom: none;
-                padding-bottom: 15px;
-            }
-            
-            /* Labels */
-            .mobile-card-table td:not(.team-name-cell)::before {
-                content: attr(data-label);
-                font-weight: bold;
-                color: #888;
-                font-size: 13px;
-                margin-right: 15px;
-            }
-            
-            /* Special handling for Members */
-            .mobile-card-table td.team-members-cell {
-                display: block;
-                text-align: left;
-            }
-            .mobile-card-table td.team-members-cell::before {
-                display: block;
-                margin-bottom: 5px;
-            }
-            .mobile-card-table td.team-members-cell .tag {
-                margin-bottom: 4px;
-                display: inline-block;
-            }
-            
-            /* Action Buttons */
-            .mobile-card-table td[data-label="操作"] {
-                justify-content: flex-end;
-                gap: 10px;
-                padding-top: 10px;
-                padding-bottom: 12px;
-                background: #fff;
-            }
-            .mobile-card-table td[data-label="操作"] button {
-                padding: 6px 15px !important;
-                font-size: 13px !important;
-                border-radius: 4px;
-            }
         }
         /* Team List Styles */
         .team-group-header {
@@ -746,21 +638,11 @@
         }
         
         @media (max-width: 768px) {
-            .container {
-                padding: 15px;
-            }
-            h1 {
-                font-size: 20px;
-                margin-top: 30px; /* Make space for the button */
-                margin-bottom: 20px;
-            }
             .reselect-year-btn {
-                top: 10px;
-                right: 10px;
+                top: 15px;
+                right: 15px;
                 padding: 6px 10px;
                 font-size: 12px;
-                background: rgba(255,255,255,0.95);
-                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
             }
             .reselect-year-btn .btn-text {
                 display: none;
@@ -1999,7 +1881,7 @@
             groupDiv.appendChild(header);
             
             const table = document.createElement('table');
-            table.className = 'team-list-table mobile-card-table';
+            table.className = 'team-list-table';
             table.innerHTML = `
                 <thead>
                     <tr style="background:#fff; border-bottom:2px solid #eee; font-size:12px; color:#888;">
@@ -2028,12 +1910,12 @@
                 const nameDisplay = isImage(team.name) ? `<img src="${team.name}" style="height:30px; vertical-align:middle;">` : team.name;
 
                 tr.innerHTML = `
-                    <td data-label="时间">${shortTime}</td>
-                    <td data-label="序号"><span style="font-weight:bold; color:#007bff;">${team.serial}</span></td>
-                    <td data-label="队伍名称" class="team-name-cell">${nameDisplay}</td>
-                    <td data-label="成员" class="team-members-cell">${membersHtml}</td>
-                    <td data-label="人数" style="text-align:center;">${team.count}</td>
-                    ${isAdmin ? `<td data-label="操作" style="text-align:center;">\n                        <button onclick=\"editTeam('${team.id}')\" style=\"padding:2px 5px; font-size:12px; background:#007bff; margin-right:5px;\">编辑</button>\n                        <button onclick=\"deleteTeam('${team.id}')\" style=\"padding:2px 5px; font-size:12px; background:#dc3545;\">删除</button>\n                    </td>` : ''}
+                    <td>${shortTime}</td>
+                    <td><span style="font-weight:bold; color:#007bff;">${team.serial}</span></td>
+                    <td>${nameDisplay}</td>
+                    <td>${membersHtml}</td>
+                    <td style="text-align:center;">${team.count}</td>
+                    ${isAdmin ? `<td style="text-align:center;">\n                        <button onclick=\"editTeam('${team.id}')\" style=\"padding:2px 5px; font-size:12px; background:#007bff; margin-right:5px;\">编辑</button>\n                        <button onclick=\"deleteTeam('${team.id}')\" style=\"padding:2px 5px; font-size:12px; background:#dc3545;\">删除</button>\n                    </td>` : ''}
                 `;
                 tbody.appendChild(tr);
             });
