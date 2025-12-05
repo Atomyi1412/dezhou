@@ -364,87 +364,165 @@
         /* Mobile Optimization */
         @media (max-width: 768px) {
             body {
-                padding: 10px;
-                background-size: 30px 30px; /* Smaller pattern */
+                padding: 10px 5px;
+                background-size: 30px 30px;
             }
             .container {
-                padding: 15px;
+                padding: 15px 10px;
+                width: 100%;
+                box-sizing: border-box;
             }
             .container::before, .container::after {
                 font-size: 24px;
                 top: -15px;
             }
             h1 {
-                font-size: 24px;
-                margin-bottom: 20px;
+                font-size: 22px;
+                margin-bottom: 15px;
+            }
+            
+            /* Scrollable Tabs */
+            .tabs {
+                justify-content: flex-start;
+                overflow-x: auto;
+                white-space: nowrap;
+                padding-bottom: 5px;
+                margin-bottom: 15px;
+                -webkit-overflow-scrolling: touch;
+                border-bottom: 1px solid #eee;
+            }
+            .tab-btn {
+                padding: 10px 15px;
+                font-size: 14px;
+                flex-shrink: 0;
             }
             
             /* Stack inputs */
             .input-group {
                 flex-direction: column !important;
+                align-items: stretch !important;
             }
-            #serialInput, #teamInput {
+            .input-group select, 
+            .input-group input {
                 width: 100% !important;
                 box-sizing: border-box;
+                margin-bottom: 8px;
             }
             
-            /* Compact Card Selectors */
+            /* Compact Card Selectors - Grid Layout */
             .card-selectors {
-                gap: 5px;
-                justify-content: space-between;
+                gap: 8px;
                 padding: 10px;
+                display: grid;
+                grid-template-columns: repeat(3, 1fr); /* 3 per row */
             }
             .card-input-group {
-                width: 19%;
-                min-width: 0; /* Allow shrinking */
+                width: auto; /* Let grid handle width */
+                min-width: 0;
             }
+            
             .card-label {
                 font-size: 12px;
             }
             .card-select-trigger {
-                padding: 5px 2px;
-                font-size: 12px;
+                padding: 5px;
+                font-size: 13px;
                 min-height: 40px;
             }
-            .card {
-                padding: 1px 4px; /* Smaller cards in selector */
-                font-size: 12px;
-                margin-right: 0;
-            }
             
+            /* Fix Dropdown Overflow */
+            .dropdown-menu {
+                width: 180px; 
+                max-width: 85vw;
+            }
+            /* Align right for right-side items to prevent overflow */
+            .card-input-group:nth-child(3n) .dropdown-menu,
+            .card-input-group:nth-child(3n-1) .dropdown-menu {
+                right: 0;
+                left: auto;
+            }
+
             /* Table Scroll */
             .table-responsive {
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
                 border-radius: 8px;
                 box-shadow: 0 0 0 1px #eee;
+                margin-bottom: 15px;
             }
             table {
-                min-width: 600px; /* Force scroll */
+                min-width: 600px;
                 margin-top: 0;
                 box-shadow: none;
                 border-radius: 0;
             }
             th, td {
-                padding: 8px 5px;
+                padding: 8px 6px;
                 font-size: 13px;
                 white-space: nowrap;
             }
             
             /* Modal adjust */
             .modal-content {
-                width: 95%;
-                margin: 10% auto;
-                padding: 15px;
+                width: 90%;
+                margin: 15% auto;
+                padding: 20px;
+                max-height: 85vh;
+                overflow-y: auto;
             }
             
-            .tab-btn {
-                padding: 10px 15px;
+            /* Toolbar Buttons Grid */
+            .toolbar {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .toolbar button {
+                flex: 1 1 calc(50% - 8px); /* 2 buttons per row */
+                padding: 10px 5px;
                 font-size: 13px;
             }
+            
+            /* Search Container Stack */
+            .search-container {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 12px;
+            }
+            .search-container input, 
+            .search-container button,
+            .search-container .hand-type-btn {
+                width: 100% !important;
+                max-width: none;
+                margin-bottom: 8px;
+            }
+            
+            /* Year Modal Specifics */
+            .year-modal-body {
+                flex-direction: column !important;
+                align-items: stretch !important;
+            }
+            .year-modal-body select,
+            .year-modal-body input,
+            .year-modal-body button {
+                width: 100% !important;
+                margin-bottom: 10px;
+            }
+
+            /* Prevent Zoom on Focus */
+            select, input, textarea {
+                font-size: 16px !important;
+            }
+            /* Wish Input Group Grid */
+            #wishFormSection .input-group {
+                display: grid !important;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            #wishFormSection .input-group input {
+                width: 100% !important;
+                min-width: 0;
+            }
         }
-    <style>
-        /* ... existing styles ... */
         /* Team List Styles */
         .team-group-header {
             background-color: #f8f9fa;
@@ -873,7 +951,7 @@
   <div class="modal-content">
     <span class="close-modal" onclick="closeModal('yearModal')">&times;</span>
     <h3 style="margin-top:0; color: var(--xmas-green);">选择年份</h3>
-    <div style="display:flex; gap:10px; align-items:center;">
+    <div class="year-modal-body" style="display:flex; gap:10px; align-items:center;">
       <select id="yearSelect" class="search-input" style="width:140px;"></select>
       <input type="password" id="yearPasscode" class="search-input" placeholder="管理口令（可选）" style="width:160px;">
       <button onclick="confirmYearSelection()" style="padding:8px 20px;">确定</button>
