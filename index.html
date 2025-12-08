@@ -872,9 +872,9 @@
 
     <!-- Gift Selection Tab -->
     <div id="tab-gifts" class="tab-content">
-        <div class="toolbar" style="margin-bottom: 20px;">
-            <!-- Removed bulk save button as per requirement -->
+        <div class="toolbar" style="margin-bottom: 20px; display:flex; gap:10px;">
             <button onclick="viewGiftImages()" class="btn-secondary"><span class="btn-icon">🖼️</span>查看礼物参考图</button>
+            <button onclick="exportGiftSelection()" class="btn-secondary btn-success" style="padding: 8px 20px;">📤 导出礼物选择</button>
         </div>
         
         <div class="search-container" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
@@ -3144,6 +3144,71 @@
             tr.appendChild(tdGifts);
             tbody.appendChild(tr);
         });
+    }
+    
+    function exportGiftSelection() {
+        const data = getFinalRankingData();
+        if (data.length === 0) {
+            alert('没有数据可导出');
+            return;
+        }
+        
+        let exportData = [];
+        
+        data.forEach(item => {
+            const teamEntry = teamList.find(t => t.serial === item.serial);
+            const members = teamEntry ? teamEntry.members : [];
+            const gifts = teamEntry ? (teamEntry.gifts || {}) : {};
+            const tier = giftTiers.find(t => item.rank >= t.min && item.rank <= t.max);
+            const tierName = tier ? tier.name : '-';
+            const teamName = isImage(item.team) ? "[图片队伍]" : item.team;
+            
+            if (members.length > 0) {
+                members.forEach(member => {
+                    const g = gifts[member] || {};
+                    const giftId = g.id ? String(g.id) : '';
+                    const remark = g.remark ? String(g.remark) : '';
+                    
+                    exportData.push({
+                        "最终排名": item.rank,
+                        "礼物档位": tierName,
+                        "队伍名称": teamName,
+                        "成员名称": member,
+                        "礼物选择": giftId,
+                        "备注": remark
+                    });
+                });
+            } else {
+                exportData.push({
+                    "最终排名": item.rank,
+                    "礼物档位": tierName,
+                    "队伍名称": teamName,
+                    "成员名称": "无成员信息",
+                    "礼物选择": "",
+                    "备注": ""
+                });
+            }
+        });
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        ws['!cols'] = [
+            { wch: 8 },  // 最终排名
+            { wch: 10 }, // 礼物档位
+            { wch: 20 }, // 队伍名称
+            { wch: 15 }, // 成员名称
+            { wch: 15 }, // 礼物选择
+            { wch: 20 }  // 备注
+        ];
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '礼物选择');
+        const date = new Date();
+        const dateStr = `${date.getFullYear()}${(date.getMonth()+1).toString().padStart(2,'0')}${date.getDate().toString().padStart(2,'0')}`;
+        const timeStr = `${date.getHours().toString().padStart(2,'0')}${date.getMinutes().toString().padStart(2,'0')}`;
+        try {
+            XLSX.writeFile(wb, `礼物选择_${dateStr}_${timeStr}.xlsx`);
+        } catch (e) {
+            alert('导出失败: ' + e.message);
+        }
     }
     
     // Handle blur event for auto-save
