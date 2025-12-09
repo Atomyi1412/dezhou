@@ -1579,6 +1579,11 @@
             const wishData = wishPointsMap[serial];
             const handData = handPointsMap[serial];
 
+            // 只有当“扑克手牌榜”和“心愿榜”都有数据时才计入
+            if (!wishData || !handData) {
+                return;
+            }
+
             // Name resolution
             let teamName = "未知队伍";
             if (teamEntry) teamName = teamEntry.name;
