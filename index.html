@@ -812,8 +812,7 @@
     <!-- Final Ranking Tab -->
     <div id="tab-final" class="tab-content">
         <div class="toolbar">
-            <button onclick="exportFinalRanking()" class="btn-secondary btn-success"><span class="btn-icon">📤</span>导出总榜</button>
-            <button onclick="updateFinalRanking()" class="btn-secondary"><span class="btn-icon">🔄</span>刷新数据</button>
+            <button id="btnFinalExport" onclick="exportFinalRanking()" class="btn-secondary btn-success"><span class="btn-icon">📤</span>导出总榜</button>
         </div>
         
         <div style="margin-bottom: 10px; padding: 10px; background: #fff; border-radius: 5px; border: 1px solid #eee; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px;">
@@ -916,7 +915,7 @@
     <div id="tab-gifts" class="tab-content">
         <div class="toolbar" style="margin-bottom: 20px; display:flex; gap:10px;">
             <button onclick="viewGiftImages()" class="btn-secondary"><span class="btn-icon">🖼️</span>查看礼物参考图</button>
-            <button onclick="exportGiftSelection()" class="btn-secondary btn-success" style="padding: 8px 20px;">📤 导出礼物选择</button>
+            <button id="btnGiftExport" onclick="exportGiftSelection()" class="btn-secondary btn-success" style="padding: 8px 20px;">📤 导出礼物选择</button>
         </div>
         
         <div class="search-container" style="margin-bottom: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
@@ -1335,46 +1334,66 @@
         const show = (el) => { if (el) el.style.display = ''; };
         const hide = (el) => { if (el) el.style.display = 'none'; };
 
+        // Toggle Action Columns in static tables
+        const rankingTh = document.querySelector('#rankingTable thead th:last-child');
+        const wishTh = document.querySelector('#wishRankingTable thead th:last-child');
+
         if (isAdmin) {
+            if (rankingTh) rankingTh.style.display = '';
+            if (wishTh) wishTh.style.display = '';
+
             show(document.getElementById('headerSettingsBtn'));
             show(document.getElementById('btnCalcSettings'));
             show(document.getElementById('btnCalcImport'));
             show(document.getElementById('calcFormSection')); // Show wrapper
             show(document.getElementById('btnClearHandData'));
+            show(document.getElementById('btnExportRanking'));
 
             show(document.getElementById('btnWishSettings'));
             show(document.getElementById('btnWishImport'));
             show(document.getElementById('btnWishClear'));
             show(document.getElementById('wishFormSection'));
+            show(document.getElementById('btnWishExport'));
 
             show(document.getElementById('btnTeamImport'));
             show(document.getElementById('btnTeamClear'));
             show(document.getElementById('teamFormSection'));
+            show(document.getElementById('btnTeamExport'));
             show(document.getElementById('tabBtnChanges'));
             show(document.getElementById('btnSaveSnapshot'));
             show(document.getElementById('btnLoadSnapshot'));
+            show(document.getElementById('btnFinalExport'));
+            show(document.getElementById('btnGiftExport'));
             const passInput = document.getElementById('yearPasscode');
             const logoutBtn = document.getElementById('adminLogoutBtn');
             if (passInput) passInput.style.display = 'none';
             if (logoutBtn) logoutBtn.style.display = '';
         } else {
+            if (rankingTh) rankingTh.style.display = 'none';
+            if (wishTh) wishTh.style.display = 'none';
+
             hide(document.getElementById('headerSettingsBtn'));
             hide(document.getElementById('btnCalcSettings'));
             hide(document.getElementById('btnCalcImport'));
             hide(document.getElementById('calcFormSection')); // Hide wrapper
             hide(document.getElementById('btnClearHandData'));
+            hide(document.getElementById('btnExportRanking'));
 
             hide(document.getElementById('btnWishSettings'));
             hide(document.getElementById('btnWishImport'));
             hide(document.getElementById('btnWishClear'));
             hide(document.getElementById('wishFormSection'));
+            hide(document.getElementById('btnWishExport'));
 
             hide(document.getElementById('btnTeamImport'));
             hide(document.getElementById('btnTeamClear'));
             hide(document.getElementById('teamFormSection'));
+            hide(document.getElementById('btnTeamExport'));
             hide(document.getElementById('tabBtnChanges'));
             hide(document.getElementById('btnSaveSnapshot'));
             hide(document.getElementById('btnLoadSnapshot'));
+            hide(document.getElementById('btnFinalExport'));
+            hide(document.getElementById('btnGiftExport'));
             const passInput = document.getElementById('yearPasscode');
             const logoutBtn = document.getElementById('adminLogoutBtn');
             if (passInput) passInput.style.display = '';
@@ -1386,6 +1405,13 @@
         isAdmin = false;
         try { localStorage.setItem('isAdmin','false'); } catch (e) {}
         applyRoleUI();
+
+        // Refresh tables to remove action buttons
+        renderTeamList();
+        renderWishRanking();
+        updateTable();
+
+        closeModal('yearModal');
         alert('已退出管理员');
     }
 
@@ -1405,6 +1431,19 @@
 
     async function loadYearData(year) {
         if (!supabaseClient) return;
+
+        // Reset settings to defaults to prevent data carry-over from previous year
+        totalTeams = 49;
+        giftTiers = [
+            { min: 1, max: 4, name: "1000档", color: "#F8BBD0", value: 1000 },
+            { min: 5, max: 10, name: "800档", color: "#BBDEFB", value: 800 },
+            { min: 11, max: 20, name: "600档", color: "#C8E6C9", value: 600 },
+            { min: 21, max: 44, name: "400档", color: "#FFF9C4", value: 400 },
+            { min: 45, max: 50, name: "200档", color: "#F5F5F5", value: 200 }
+        ];
+        giftImages = [];
+        rankBaseline = { name: null, hand: {}, wish: {}, final: {}, timestamp: null };
+
         const { data: teams } = await supabaseClient.from('teams').select('*').eq('year', year).order('sort_key', { ascending: true });
         const { data: wishes } = await supabaseClient.from('wishes').select('*').eq('year', year);
         const { data: hands } = await supabaseClient.from('hands').select('*').eq('year', year);
@@ -1889,6 +1928,7 @@
             totalTeams = val;
             updateTable();
             renderWishRanking(); // Also update wish ranking
+            if (isAdmin) { saveAppSettings(); }
         }
     }
 
@@ -3376,7 +3416,7 @@
                 desc: file.name
             });
             renderGiftImagesPreview();
-            saveAppSettings();
+            await saveGiftImages();
             event.target.value = ''; // Reset
         };
         reader.readAsDataURL(file);
@@ -3563,7 +3603,7 @@
     function removeGiftImage(index) {
         giftImages.splice(index, 1);
         renderGiftImagesPreview();
-        saveAppSettings();
+        saveGiftImages();
     }
     
     function viewGiftImages() {
@@ -3572,21 +3612,13 @@
     }
     
     async function saveAppSettings() {
-        if (!supabaseClient || !currentYear) return;
+        if (!supabaseClient || !currentYear || !isAdmin) return;
         
         // Save Tiers
         await supabaseClient.from('settings').upsert({ 
             year: currentYear, 
             key: 'gift_tiers', 
             value: giftTiers 
-        }, { onConflict: 'year,key' });
-        
-        // Save Images (Warning: Supabase row size limit might be hit if many large images. 
-        // Ideally should use Storage, but for now using DB column as requested/implied by context restrictions)
-        await supabaseClient.from('settings').upsert({ 
-            year: currentYear, 
-            key: 'gift_images', 
-            value: giftImages 
         }, { onConflict: 'year,key' });
 
         // Save Total Teams
@@ -3595,6 +3627,19 @@
             key: 'total_teams', 
             value: totalTeams 
         }, { onConflict: 'year,key' });
+    }
+
+    async function saveGiftImages() {
+        if (!supabaseClient || !currentYear || !isAdmin) return;
+        if (Array.isArray(giftImages) && giftImages.length > 0) {
+            await supabaseClient.from('settings').upsert({ 
+                year: currentYear, 
+                key: 'gift_images', 
+                value: giftImages 
+            }, { onConflict: 'year,key' });
+        } else {
+            await supabaseClient.from('settings').delete().eq('year', currentYear).eq('key', 'gift_images');
+        }
     }
     
     // --- Gift Selection Logic ---
@@ -3798,6 +3843,10 @@
         const modal = document.getElementById(modalId);
         if (modal) {
             modal.style.display = "block";
+            if (modalId === 'settingsModal') {
+                const input = document.getElementById('totalTeamsInput');
+                if (input) input.value = String(totalTeams);
+            }
         } else {
             console.error("Modal not found:", modalId);
         }
