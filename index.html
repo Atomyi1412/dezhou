@@ -1262,6 +1262,7 @@
         { min: 45, max: 50, name: "200档", color: "#F5F5F5", value: 200 }  // Gray
     ];
     let giftImages = []; // Array of base64 strings or objects { url: ..., desc: ... }
+    let previousRanks = { hand: {}, wish: {}, final: {} }; // Stores previous rankings for change tracking
 
     function openYearModal() {
         const sel = document.getElementById('yearSelect');
@@ -1426,6 +1427,10 @@
                 updateFinalRanking();
             }
         }
+
+        // Initialize ranks snapshot for change tracking
+        snapshotRanks();
+        isInitialLoad = false;
     }
 
     async function upsertTeams(rows) {
@@ -1800,7 +1805,7 @@
             }
             
             // 最终排名
-            tr.innerHTML += `<td>${item.rank}</td>`;
+            tr.innerHTML += `<td>${item.rank}${getRankChangeHtml(item.serial, item.rank, 'final')}</td>`;
             
             // 礼物档位
             tr.innerHTML += `<td>${tierName}</td>`;
@@ -2040,6 +2045,10 @@
     
     function saveTeam() {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        // Snapshot current ranks before modification
+        snapshotRanks();
+
         const serial = document.getElementById('teamSerial').value.trim();
         let name = document.getElementById('teamName').value.trim();
         const membersStr = document.getElementById('teamMembers').value.trim();
@@ -2233,6 +2242,9 @@
     function deleteTeam(id) {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         if (confirm('确定删除此队伍吗？')) {
+            // Snapshot current ranks before modification
+            snapshotRanks();
+
             const del = teamList.find(t => t.id === id);
             teamList = teamList.filter(t => t.id !== id);
             if (del) deleteTeamInCloud(del.serial);
@@ -2473,6 +2485,10 @@
 
     function saveWish() {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        // Snapshot current ranks before modification
+        snapshotRanks();
+
         const serial = document.getElementById('wishSerialInput').value;
         const teamName = document.getElementById('wishTeamInput').value;
         
@@ -2550,6 +2566,9 @@
     function deleteWish(serial) {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         if(confirm('确定删除该队伍的心愿数据吗？')) {
+            // Snapshot current ranks before modification
+            snapshotRanks();
+
             wishList = wishList.filter(w => w.serial !== serial);
             deleteWishInCloud(serial);
             renderWishRanking();
@@ -2591,7 +2610,7 @@
              const nameDisplay = isImage(entry.team) ? `<img src="${entry.team}" style="height:30px; vertical-align:middle;">` : entry.team;
              
             tr.innerHTML = `
-               <td>${effectiveRank}</td>
+               <td>${effectiveRank}${getRankChangeHtml(entry.serial, effectiveRank, 'wish')}</td>
                <td>${entry.serial}</td>
                <td>${nameDisplay}</td>
                <td>${entry.wishes[0]}</td>
@@ -3454,6 +3473,10 @@
 
     function processBulkImport(isFromFile = false) {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        // Snapshot current ranks before modification
+        snapshotRanks();
+
         const input = document.getElementById('bulkInput').value.trim();
         if (!input) return;
 
@@ -3635,6 +3658,10 @@
 
     function processHand() {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        // Snapshot current ranks before modification
+        snapshotRanks();
+
         const errorMsg = document.getElementById('errorMsg');
         // const inputVal = document.getElementById('cardInput').value.trim(); // Removed
         const serialVal = document.getElementById('serialInput').value.trim();
@@ -3977,7 +4004,7 @@
 
             // 排名
             const tdRank = document.createElement('td');
-            tdRank.textContent = effectiveRank;
+            tdRank.innerHTML = `${effectiveRank}${getRankChangeHtml(entry.serial, effectiveRank, 'hand')}`;
             tr.appendChild(tdRank);
             
             // 序号
@@ -4107,6 +4134,75 @@
             XLSX.writeFile(wb, filename);
         } catch (e) {
             alert('导出失败: ' + e.message);
+        }
+    }
+
+    // Rank Change Tracking Helpers
+    let isInitialLoad = true;
+
+    function calculateHandRanks() {
+        const ranks = {};
+        // Use logic identical to updateTable sorting
+        const sorted = [...handHistory].sort((a, b) => b.score - a.score);
+        let rank = 1;
+        sorted.forEach((h, i) => {
+            if (i > 0 && h.score === sorted[i-1].score) {
+                // Tie
+            } else {
+                rank = i + 1;
+            }
+            ranks[h.serial] = rank;
+        });
+        return ranks;
+    }
+
+    function calculateWishRanks() {
+        const ranks = {};
+        const sorted = [...wishList].sort((a, b) => b.total - a.total);
+        let rank = 1;
+        sorted.forEach((w, i) => {
+            if (i > 0 && w.total === sorted[i-1].total) {
+            } else {
+                rank = i + 1;
+            }
+            ranks[w.serial] = rank;
+        });
+        return ranks;
+    }
+
+    function calculateFinalRanks() {
+        const ranks = {};
+        // Note: getFinalRankingData relies on current wishList/handHistory states
+        const data = getFinalRankingData(); 
+        data.forEach(item => {
+            ranks[item.serial] = item.rank;
+        });
+        return ranks;
+    }
+
+    function snapshotRanks() {
+        previousRanks.hand = calculateHandRanks();
+        previousRanks.wish = calculateWishRanks();
+        previousRanks.final = calculateFinalRanks();
+    }
+
+    function getRankChangeHtml(serial, currentRank, type) {
+        if (isInitialLoad) return '';
+        
+        const prevRank = previousRanks[type][serial];
+        if (prevRank === undefined) {
+            return '<span style="font-size:12px; color:var(--xmas-red); font-weight:bold; margin-left:5px;">新进榜</span>';
+        }
+        
+        if (prevRank === currentRank) {
+            return '<span style="font-size:12px; color:#aaa; margin-left:5px;">-</span>';
+        }
+        
+        const diff = prevRank - currentRank; // Positive means rank improved (e.g. 5 -> 1, diff 4)
+        if (diff > 0) {
+            return `<span style="font-size:12px; color:var(--xmas-red); font-weight:bold; margin-left:5px;">↑${diff}</span>`;
+        } else {
+            return `<span style="font-size:12px; color:var(--xmas-green); font-weight:bold; margin-left:5px;">↓${Math.abs(diff)}</span>`;
         }
     }
 
