@@ -1630,10 +1630,34 @@
                     <button class="btn-secondary" style="padding:4px 10px; font-size:12px; margin-right:6px;" onclick="compareSnapshot('${name}')">对比</button>
                     <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="applySnapshot('${name}')">应用</button>
                     <button class="btn-secondary" style="padding:4px 10px; font-size:12px; margin-left:6px;" onclick="exportSnapshot('${name}')">导出</button>
+                    <button class="btn-danger" style="padding:4px 10px; font-size:12px; margin-left:6px;" onclick="deleteSnapshot('${name}')">删除</button>
                 </div>
             `;
             container.appendChild(wrap);
         });
+    }
+
+    async function deleteSnapshot(name) {
+        if (!isAdmin) { alert('当前为普通用户，无法删除快照'); return; }
+        if (!supabaseClient || !currentYear) return;
+        
+        if (!confirm(`确定要删除快照 "${name}" 吗？`)) return;
+        if (!confirm(`二次确认：此操作不可恢复，确定删除快照 "${name}"？`)) return;
+
+        try {
+            const { error } = await supabaseClient
+                .from('settings')
+                .delete()
+                .eq('year', currentYear)
+                .eq('key', `data_snapshot:${name}`);
+
+            if (error) throw error;
+
+            alert('快照已删除');
+            refreshSnapshotList();
+        } catch (e) {
+            alert('删除失败：' + e.message);
+        }
     }
 
     async function applySnapshot(name) {
