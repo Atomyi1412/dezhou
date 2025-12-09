@@ -1849,10 +1849,59 @@
                 const hr = handRanks[s];
                 const wishPoints = tt - wr + 1;
                 const handPoints = tt - hr + 1;
-                finals.push({ serial: s, score: wishPoints + handPoints });
+                finals.push({ serial: s, score: wishPoints + handPoints, wishPoints, handPoints });
             });
             
             finals.sort((a,b)=> b.score - a.score);
+
+            // NEW: Final Ranking Sheet
+            const finalRankingRows = [];
+            let rFinalRank = 1;
+            finals.forEach((f, i) => {
+                if (i>0 && f.score === finals[i-1].score) { } else { rFinalRank = i+1; }
+                const rank = rFinalRank;
+                
+                const team = Array.isArray(snap.teams) ? snap.teams.find(t => String(t.serial) === String(f.serial)) : null;
+                const wish = Array.isArray(snap.wishes) ? snap.wishes.find(w => String(w.serial) === String(f.serial)) : null;
+                const hand = Array.isArray(snap.hands) ? snap.hands.find(h => String(h.serial) === String(f.serial)) : null;
+
+                if (!team) return;
+
+                const teamName = (typeof team.name === 'string') ? (team.name.startsWith('data:image') ? '[图片队伍]' : team.name) : '';
+                const members = Array.isArray(team.members) ? team.members.join(', ') : '';
+                
+                const wishCount = wish ? (wish.total || 0) : 0;
+                const handName = hand ? (hand.handName || '') : '';
+                const handCards = hand ? (Array.isArray(hand.cards) ? hand.cards.join(' ') : '') : '';
+                
+                finalRankingRows.push({
+                    "最终排名": rank,
+                    "序号": team.serial,
+                    "队伍名称": teamName,
+                    "成员": members,
+                    "心愿总计": wishCount,
+                    "心愿积分": f.wishPoints,
+                    "牌型名称": handName,
+                    "牌面": handCards,
+                    "牌型积分": f.handPoints,
+                    "最终分数": f.score
+                });
+            });
+
+            const wsFinal = XLSX.utils.json_to_sheet(finalRankingRows);
+            wsFinal['!cols'] = [
+                { wch: 8 },  // 最终排名
+                { wch: 6 },  // 序号
+                { wch: 20 }, // 队伍名称
+                { wch: 30 }, // 成员
+                { wch: 10 }, // 心愿总计
+                { wch: 10 }, // 心愿积分
+                { wch: 15 }, // 牌型名称
+                { wch: 20 }, // 牌面
+                { wch: 10 }, // 牌型积分
+                { wch: 10 }  // 最终分数
+            ];
+            XLSX.utils.book_append_sheet(wb, wsFinal, 'FinalRanking');
             
             // 4. Build Gift Selection Data
             const giftSelectionRows = [];
