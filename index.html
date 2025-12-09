@@ -791,15 +791,22 @@
         <button id="headerSettingsBtn" onclick="openModal('settingsModal')" class="header-btn settings-btn" title="设置" style="display: none;">
             ⚙️ <span class="btn-text">设置</span>
         </button>
+        <button id="btnSaveSnapshot" onclick="openSnapshotModal('save')" class="header-btn" title="另存快照" style="display: none;">
+            💾 <span class="btn-text">另存快照</span>
+        </button>
+        <button id="btnLoadSnapshot" onclick="openSnapshotModal('load')" class="header-btn" title="读取快照" style="display: none;">
+            📥 <span class="btn-text">读取快照</span>
+        </button>
     </div>
     <h1>圣诞大冒险统计</h1>
     
     <div class="tabs">
-        <div class="tab-btn active" onclick="switchTab('calc')">牌型计算 & 排行</div>
-        <div class="tab-btn" onclick="switchTab('wishes')">心愿计算 & 排行</div>
-        <div class="tab-btn" onclick="switchTab('teams')">队伍管理</div>
+        <div class="tab-btn active" onclick="switchTab('teams')">队伍列表</div>
+        <div class="tab-btn" onclick="switchTab('calc')">牌型排行</div>
+        <div class="tab-btn" onclick="switchTab('wishes')">心愿排行</div>
         <div class="tab-btn" onclick="switchTab('final')">最终排行</div>
         <div class="tab-btn" onclick="switchTab('gifts')">礼物选择</div>
+        <!-- <div class="tab-btn" onclick="switchTab('changes')" style="display: none;" id="tabBtnChanges">排名变化</div> -->
     </div>
 
     <!-- Final Ranking Tab -->
@@ -870,6 +877,41 @@
         </div>
     </div>
 
+    <!-- Rank Change Tab (Disabled) -->
+    <!--
+    <div id="tab-changes" class="tab-content">
+        <div class="toolbar" style="margin-bottom: 10px; display:flex; gap:10px;">
+            <button onclick="renderRankChangeTab()" class="btn-secondary"><span class="btn-icon">🔄</span>刷新</button>
+        </div>
+        <div id="rankChangeContainer" class="table-responsive"></div>
+    </div>
+    -->
+    <!-- Snapshot Modal -->
+    <div id="snapshotModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeModal('snapshotModal')">&times;</span>
+            <h2 style="margin-top: 0; color: var(--xmas-green);">数据快照</h2>
+            
+            <div id="snapshotModeSave" style="display:none;">
+                <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
+                    <input type="text" id="snapshotNameInput" placeholder="快照名称 (默认当前时间)" style="flex:1; padding:10px; border:1px solid #ccc; border-radius:5px;">
+                    <button onclick="saveDataSnapshot()" class="btn-secondary btn-success" style="padding:8px 20px;">保存快照</button>
+                </div>
+                <p style="font-size:12px; color:#666;">说明：保存当前年份的所有队伍、心愿、手牌、礼物配置等数据为一个快照。</p>
+            </div>
+            
+            <div id="snapshotModeLoad" style="display:none;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 style="margin:0; font-size:16px; color:#495057;">已有快照</h3>
+                    <button onclick="refreshSnapshotList()" class="btn-secondary" style="padding:5px 10px; font-size:12px;">刷新</button>
+                </div>
+                <div id="snapshotListContainer" style="max-height:300px; overflow:auto; border:1px solid #eee; border-radius:6px; padding:8px;">
+                    <!-- Filled by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Gift Selection Tab -->
     <div id="tab-gifts" class="tab-content">
         <div class="toolbar" style="margin-bottom: 20px; display:flex; gap:10px;">
@@ -911,70 +953,27 @@
     </div>
 
     <!-- Calculator Tab -->
-    <div id="tab-calc" class="tab-content active">
+    <div id="tab-calc" class="tab-content">
         <div class="toolbar" id="calcToolbar">
             <button id="btnCalcImport" onclick="openModal('importModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
             <button id="btnExportRanking" onclick="exportRanking()" class="btn-secondary btn-info" style="padding: 8px 20px; font-size: 14px;">📤 导出表格</button>
             <button id="btnClearHandData" onclick="clearData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空数据</button>
         </div>
 
+        <!-- Batch Hand Form -->
         <div id="calcFormSection" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-            <div class="input-group" id="calcInputSection" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
-                <select id="serialInput" style="width: 120px; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; background-color: white;" onchange="syncTeamInput('serial')">
-                    <option value="">序号</option>
-                </select>
-                <select id="teamInput" style="flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; background-color: white;" onchange="syncTeamInput('team')">
-                    <option value="">队伍名称</option>
-                </select>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 16px; color: var(--xmas-green);">录入/编辑牌型</h3>
+                <button onclick="addHandRow()" class="btn-secondary" style="padding: 5px 15px; font-size: 12px;">+ 添加一行</button>
             </div>
-        
-            <div class="card-selectors" id="calcCardSelectors" style="background: transparent; border: none; padding: 0; margin-bottom: 10px;">
-                <!-- Generate 5 card inputs -->
-                <div class="card-input-group" id="group1">
-                    <div class="card-label">牌1</div>
-                    <div class="card-select-trigger" onclick="toggleDropdown(1)" id="trigger1">... ▾</div>
-                    <div class="dropdown-menu" id="dropdown1">
-                        <input type="text" class="search-box" placeholder="查找..." onkeyup="filterCards(1)" onclick="event.stopPropagation()">
-                        <div class="card-options-list" id="list1"></div>
-                    </div>
-                </div>
-                <div class="card-input-group" id="group2">
-                    <div class="card-label">牌2</div>
-                    <div class="card-select-trigger" onclick="toggleDropdown(2)" id="trigger2">... ▾</div>
-                    <div class="dropdown-menu" id="dropdown2">
-                        <input type="text" class="search-box" placeholder="查找..." onkeyup="filterCards(2)" onclick="event.stopPropagation()">
-                        <div class="card-options-list" id="list2"></div>
-                    </div>
-                </div>
-                <div class="card-input-group" id="group3">
-                    <div class="card-label">牌3</div>
-                    <div class="card-select-trigger" onclick="toggleDropdown(3)" id="trigger3">... ▾</div>
-                    <div class="dropdown-menu" id="dropdown3">
-                        <input type="text" class="search-box" placeholder="查找..." onkeyup="filterCards(3)" onclick="event.stopPropagation()">
-                        <div class="card-options-list" id="list3"></div>
-                    </div>
-                </div>
-                <div class="card-input-group" id="group4">
-                    <div class="card-label">牌4</div>
-                    <div class="card-select-trigger" onclick="toggleDropdown(4)" id="trigger4">... ▾</div>
-                    <div class="dropdown-menu" id="dropdown4">
-                        <input type="text" class="search-box" placeholder="查找..." onkeyup="filterCards(4)" onclick="event.stopPropagation()">
-                        <div class="card-options-list" id="list4"></div>
-                    </div>
-                </div>
-                <div class="card-input-group" id="group5">
-                    <div class="card-label">牌5</div>
-                    <div class="card-select-trigger" onclick="toggleDropdown(5)" id="trigger5">... ▾</div>
-                    <div class="dropdown-menu" id="dropdown5">
-                        <input type="text" class="search-box" placeholder="查找..." onkeyup="filterCards(5)" onclick="event.stopPropagation()">
-                        <div class="card-options-list" id="list5"></div>
-                    </div>
-                </div>
+            
+            <div id="handRowsContainer">
+                <!-- Dynamic Rows -->
             </div>
 
-            <div class="action-area" id="calcActionArea" style="text-align: center;">
-                <button id="cancelBtn" onclick="cancelEdit()" style="display:none; background-color: #6c757d; margin-right: 10px; padding: 8px 25px;">取消</button>
-                <button id="actionBtn" onclick="processHand()" style="padding: 8px 25px;">计算 & 排名</button>
+            <div style="text-align: center; margin-top: 15px;">
+                <button id="cancelBtn" onclick="cancelEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消编辑</button>
+                <button id="actionBtn" onclick="processBatchHands()" style="padding: 8px 25px;">批量计算 & 排名</button>
             </div>
             <div id="errorMsg" class="error-msg"></div>
         </div>
@@ -1036,26 +1035,20 @@
             <button id="btnWishClear" onclick="clearWishData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空数据</button>
         </div>
 
+        <!-- Wish Form (Batch Mode) -->
         <div id="wishFormSection" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0; font-size: 16px; color: var(--xmas-green);">录入/编辑心愿</h3>
-            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
-                <select id="wishSerialInput" style="width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncWishInput('serial')">
-                    <option value="">序号</option>
-                </select>
-                <select id="wishTeamInput" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncWishInput('team')">
-                    <option value="">队伍名称</option>
-                </select>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 16px; color: var(--xmas-green);">录入/编辑心愿</h3>
+                <button onclick="addWishRow()" class="btn-secondary" style="padding: 5px 15px; font-size: 12px;">+ 添加一行</button>
             </div>
-            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; flex-wrap: wrap;">
-                <input type="number" id="wish1" placeholder="1颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
-                <input type="number" id="wish2" placeholder="2颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
-                <input type="number" id="wish3" placeholder="3颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
-                <input type="number" id="wish4" placeholder="4颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
-                <input type="number" id="wish5" placeholder="5颗心愿数量" style="flex: 1; min-width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;">
+            
+            <div id="wishRowsContainer">
+                <!-- Dynamic Rows -->
             </div>
-            <div style="text-align: center;">
-                <button id="cancelWishEditBtn" onclick="cancelWishEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消</button>
-                <button id="saveWishBtn" onclick="saveWish()" style="padding: 8px 25px;">保存数据</button>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button id="cancelWishEditBtn" onclick="cancelWishEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消编辑</button>
+                <button id="saveWishBtn" onclick="saveAllWishes()" style="padding: 8px 25px;">批量保存</button>
             </div>
         </div>
 
@@ -1084,35 +1077,27 @@
     </div>
 
     <!-- Team Management Tab -->
-    <div id="tab-teams" class="tab-content">
+    <div id="tab-teams" class="tab-content active">
         <div class="toolbar" id="teamToolbar">
             <button id="btnTeamImport" onclick="openModal('teamImportModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
             <button id="btnTeamExport" onclick="exportTeams()" class="btn-secondary btn-success" style="padding: 8px 20px;">📤 导出队伍</button>
             <button id="btnTeamClear" onclick="clearTeamData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空列表</button>
         </div>
 
-        <!-- Add Team Form -->
+        <!-- Add Team Form (Batch Mode) -->
         <div id="teamFormSection" style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-            <h3 style="margin-top: 0; font-size: 16px; color: var(--xmas-green);">添加/编辑队伍</h3>
-            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; align-items: center;">
-                <input type="text" id="teamSerial" placeholder="序号" style="width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                <div style="flex: 1; display: flex; gap: 5px; align-items: center;">
-                    <input type="text" id="teamName" placeholder="队伍名称" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                    <input type="file" id="teamNameImageInput" accept="image/*" style="display:none" onchange="handleTeamImageSelect(this)">
-                    <button onclick="document.getElementById('teamNameImageInput').click()" style="padding: 5px 10px; font-size: 12px;">上传图片队名</button>
-                    <div id="teamNamePreview" style="display:none; align-items: center; gap: 5px;">
-                        <img id="teamNamePreviewImg" src="" style="height: 30px; border: 1px solid #ddd;">
-                        <button onclick="clearTeamImage()" style="padding: 0 5px; color: red;">&times;</button>
-                    </div>
-                </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h3 style="margin: 0; font-size: 16px; color: var(--xmas-green);">添加/编辑队伍</h3>
+                <button onclick="addTeamRow()" class="btn-secondary" style="padding: 5px 15px; font-size: 12px;">+ 添加一行</button>
             </div>
-            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px;">
-                <input type="text" id="teamMembers" placeholder="成员 (用逗号或空格分隔)" style="flex: 2; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
-                <input type="text" id="teamTime" placeholder="预约时间 (例如: 11.24(周一)下午18:00)" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+            
+            <div id="teamRowsContainer">
+                <!-- Dynamic Rows -->
             </div>
-            <div style="text-align: center;">
-                <button id="cancelTeamEditBtn" onclick="cancelTeamEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消</button>
-                <button id="saveTeamBtn" onclick="saveTeam()" style="padding: 8px 25px;">保存队伍</button>
+
+            <div style="text-align: center; margin-top: 15px;">
+                <button id="cancelTeamEditBtn" onclick="cancelTeamEdit()" style="padding: 8px 25px; background-color: #6c757d; margin-right: 10px; display: none;">取消编辑</button>
+                <button id="saveTeamBtn" onclick="saveAllTeams()" style="padding: 8px 25px;">批量保存</button>
             </div>
         </div>
 
@@ -1127,11 +1112,12 @@
   <div class="modal-content">
     <span class="close-modal" onclick="closeModal('yearModal')">&times;</span>
     <h3 style="margin-top:0; color: var(--xmas-green);">选择年份</h3>
-    <div class="year-modal-body" style="display:flex; gap:10px; align-items:center;">
+  <div class="year-modal-body" style="display:flex; gap:10px; align-items:center;">
       <select id="yearSelect" class="search-input" style="width:140px;"></select>
       <input type="password" id="yearPasscode" class="search-input" placeholder="管理口令（可选）" style="width:160px;">
       <button onclick="confirmYearSelection()" style="padding:8px 20px;">确定</button>
-    </div>
+      <button id="adminLogoutBtn" onclick="adminLogout()" style="padding:8px 20px; display:none;">登出</button>
+  </div>
   </div>
 </div>
 
@@ -1263,6 +1249,7 @@
     ];
     let giftImages = []; // Array of base64 strings or objects { url: ..., desc: ... }
     let previousRanks = { hand: {}, wish: {}, final: {} }; // Stores previous rankings for change tracking
+    let rankBaseline = { name: null, hand: {}, wish: {}, final: {}, timestamp: null }; // Persisted baseline for rank change compare
 
     function openYearModal() {
         const sel = document.getElementById('yearSelect');
@@ -1276,6 +1263,16 @@
             }
             sel.value = String(now);
         }
+        // Adjust admin UI in modal
+        const passInput = document.getElementById('yearPasscode');
+        const logoutBtn = document.getElementById('adminLogoutBtn');
+        if (isAdmin) {
+            if (passInput) passInput.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = '';
+        } else {
+            if (passInput) passInput.style.display = '';
+            if (logoutBtn) logoutBtn.style.display = 'none';
+        }
         openModal('yearModal');
     }
 
@@ -1287,15 +1284,21 @@
         const passInput = document.getElementById('yearPasscode');
         const pass = (passInput && passInput.value) ? passInput.value.trim() : '';
         
+        // If already admin and no pass provided, keep admin state
         if (pass.length > 0) {
-             if (pass === 'sd502502') {
-                 isAdmin = true;
-             } else {
-                 alert('管理口令错误！');
-                 return;
-             }
+            if (pass === 'sd502502') {
+                isAdmin = true;
+                try { localStorage.setItem('isAdmin', 'true'); } catch (e) {}
+            } else {
+                alert('管理口令错误！');
+                return;
+            }
         } else {
-             isAdmin = false;
+            // Do not change isAdmin if already true
+            if (!isAdmin) {
+                isAdmin = false;
+                try { localStorage.setItem('isAdmin', 'false'); } catch (e) {}
+            }
         }
 
         // Show loader
@@ -1347,6 +1350,13 @@
             show(document.getElementById('btnTeamImport'));
             show(document.getElementById('btnTeamClear'));
             show(document.getElementById('teamFormSection'));
+            show(document.getElementById('tabBtnChanges'));
+            show(document.getElementById('btnSaveSnapshot'));
+            show(document.getElementById('btnLoadSnapshot'));
+            const passInput = document.getElementById('yearPasscode');
+            const logoutBtn = document.getElementById('adminLogoutBtn');
+            if (passInput) passInput.style.display = 'none';
+            if (logoutBtn) logoutBtn.style.display = '';
         } else {
             hide(document.getElementById('headerSettingsBtn'));
             hide(document.getElementById('btnCalcSettings'));
@@ -1362,7 +1372,21 @@
             hide(document.getElementById('btnTeamImport'));
             hide(document.getElementById('btnTeamClear'));
             hide(document.getElementById('teamFormSection'));
+            hide(document.getElementById('tabBtnChanges'));
+            hide(document.getElementById('btnSaveSnapshot'));
+            hide(document.getElementById('btnLoadSnapshot'));
+            const passInput = document.getElementById('yearPasscode');
+            const logoutBtn = document.getElementById('adminLogoutBtn');
+            if (passInput) passInput.style.display = '';
+            if (logoutBtn) logoutBtn.style.display = 'none';
         }
+    }
+
+    function adminLogout() {
+        isAdmin = false;
+        try { localStorage.setItem('isAdmin','false'); } catch (e) {}
+        applyRoleUI();
+        alert('已退出管理员');
     }
 
     function updateHeaderYear() {
@@ -1393,6 +1417,16 @@
             
             const imagesSetting = settings.find(s => s.key === 'gift_images');
             if (imagesSetting) giftImages = imagesSetting.value;
+
+            const baselineSetting = settings.find(s => s.key === 'rank_baseline');
+            if (baselineSetting && baselineSetting.value) {
+                rankBaseline = baselineSetting.value;
+            }
+
+            const totalTeamsSetting = settings.find(s => s.key === 'total_teams');
+            if (totalTeamsSetting && totalTeamsSetting.value) {
+                totalTeams = parseInt(totalTeamsSetting.value) || totalTeams;
+            }
         }
 
         teamList = (teams || []).map(t => ({ 
@@ -1481,6 +1515,373 @@
         await supabaseClient.from('final_rankings').upsert(payload, { onConflict: 'year,serial' });
     }
 
+    // --- Snapshot Helpers ---
+    function generateDefaultSnapshotName() {
+        const d = new Date();
+        const pad = (n) => String(n).padStart(2,'0');
+        return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+    }
+
+    async function openSnapshotModal(mode) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        document.getElementById('snapshotModeSave').style.display = mode === 'save' ? 'block' : 'none';
+        document.getElementById('snapshotModeLoad').style.display = mode === 'load' ? 'block' : 'none';
+        const input = document.getElementById('snapshotNameInput');
+        if (mode === 'save' && input) input.value = generateDefaultSnapshotName();
+        openModal('snapshotModal');
+        if (mode === 'load') await refreshSnapshotList();
+    }
+
+    async function saveDataSnapshot() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if (!supabaseClient || !currentYear) { alert('服务器未初始化'); return; }
+        const name = (document.getElementById('snapshotNameInput').value || '').trim() || generateDefaultSnapshotName();
+        const key = `data_snapshot:${name}`;
+        const payload = {
+            year: currentYear,
+            totalTeams,
+            teams: teamList,
+            wishes: wishList,
+            hands: handHistory,
+            giftTiers,
+            giftImages
+        };
+        try {
+            await supabaseClient.from('settings').upsert({ year: currentYear, key, value: payload }, { onConflict: 'year,key' });
+            alert(`快照保存成功：${name}`);
+            closeModal('snapshotModal');
+        } catch (e) {
+            alert('保存失败：' + e.message);
+        }
+    }
+
+    async function refreshSnapshotList() {
+        const container = document.getElementById('snapshotListContainer');
+        if (!container) return;
+        container.innerHTML = '<div style="color:#888;">加载中...</div>';
+        try {
+            const { data } = await supabaseClient.from('settings').select('*').eq('year', currentYear).ilike('key', 'data_snapshot:%');
+            renderSnapshotList(data || []);
+        } catch (e) {
+            container.innerHTML = '<div style="color:red;">加载失败</div>';
+        }
+    }
+
+    function renderSnapshotList(rows) {
+        const container = document.getElementById('snapshotListContainer');
+        container.innerHTML = '';
+        if (!rows || rows.length === 0) {
+            container.innerHTML = '<div style="color:#888;">暂无快照</div>';
+            return;
+        }
+        rows.sort((a,b) => String(b.key).localeCompare(String(a.key)));
+        rows.forEach(r => {
+            const wrap = document.createElement('div');
+            wrap.style.display = 'flex';
+            wrap.style.justifyContent = 'space-between';
+            wrap.style.alignItems = 'center';
+            wrap.style.padding = '6px 8px';
+            wrap.style.borderBottom = '1px solid #eee';
+            const name = String(r.key).replace('data_snapshot:','');
+            wrap.innerHTML = `
+                <div>
+                    <strong>${name}</strong>
+                </div>
+                <div>
+                    <button class="btn-secondary" style="padding:4px 10px; font-size:12px; margin-right:6px;" onclick="compareSnapshot('${name}')">对比</button>
+                    <button class="btn-secondary" style="padding:4px 10px; font-size:12px;" onclick="applySnapshot('${name}')">应用</button>
+                    <button class="btn-secondary" style="padding:4px 10px; font-size:12px; margin-left:6px;" onclick="exportSnapshot('${name}')">导出</button>
+                </div>
+            `;
+            container.appendChild(wrap);
+        });
+    }
+
+    async function applySnapshot(name) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if (!supabaseClient || !currentYear) return;
+        if (!confirm(`确定要加载快照 "${name}" 并覆盖当前页面数据吗？`)) return;
+        if (!confirm('二次确认：此操作将覆盖当前显示的数据并同步到服务器，是否继续？')) return;
+        try {
+            const { data } = await supabaseClient.from('settings').select('*').eq('year', currentYear).eq('key', `data_snapshot:${name}`).limit(1);
+            if (!data || data.length === 0) { alert('未找到快照'); return; }
+            const snap = data[0].value || {};
+            // Replace in-memory
+            totalTeams = snap.totalTeams || totalTeams;
+            teamList = Array.isArray(snap.teams) ? snap.teams : [];
+            wishList = Array.isArray(snap.wishes) ? snap.wishes : [];
+            handHistory = Array.isArray(snap.hands) ? snap.hands : [];
+            giftTiers = Array.isArray(snap.giftTiers) ? snap.giftTiers : giftTiers;
+            giftImages = Array.isArray(snap.giftImages) ? snap.giftImages : giftImages;
+
+            // Replace server tables for current year
+            await supabaseClient.from('teams').delete().eq('year', currentYear);
+            await supabaseClient.from('wishes').delete().eq('year', currentYear);
+            await supabaseClient.from('hands').delete().eq('year', currentYear);
+            await upsertTeams(teamList);
+            await upsertWishes(wishList);
+            await upsertHands(handHistory);
+            await saveAppSettings(); // persist giftTiers & giftImages
+
+            // Re-render UI
+            renderTeamList();
+            renderWishRanking();
+            handHistory.sort((a,b)=>b.score-a.score);
+            updateTable();
+            updateHeaderYear();
+            updateCalculatorDropdowns();
+            renderGiftTiersConfig();
+            renderGiftTierLegend();
+            renderGiftImagesPreview();
+            await supabaseClient.from('settings').upsert({ year: currentYear, key: 'rank_baseline', value: { name: null, hand: {}, wish: {}, final: {}, timestamp: new Date().toISOString() } }, { onConflict: 'year,key' });
+            rankBaseline = { name: null, hand: {}, wish: {}, final: {}, timestamp: new Date().toISOString() };
+            alert('快照已应用并保存到服务器');
+            closeModal('snapshotModal');
+            setTimeout(() => { location.reload(); }, 500);
+        } catch (e) {
+            alert('应用快照失败：' + e.message);
+        }
+    }
+
+    async function compareSnapshot(name) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        if (!supabaseClient || !currentYear) return;
+        try {
+            const { data } = await supabaseClient.from('settings').select('*').eq('year', currentYear).eq('key', `data_snapshot:${name}`).limit(1);
+            if (!data || data.length === 0) { alert('未找到快照'); return; }
+            const snap = data[0].value || {};
+            const tt = snap.totalTeams || totalTeams || 50;
+            
+            // Wish ranks
+            const wishRanks = {};
+            const wishSorted = Array.isArray(snap.wishes) ? [...snap.wishes].sort((a,b)=> (b.total||0) - (a.total||0)) : [];
+            let r = 1;
+            wishSorted.forEach((w,i)=>{
+                if (i>0 && (w.total||0) === (wishSorted[i-1].total||0)) { /* tie */ } else { r = i+1; }
+                wishRanks[String(w.serial)] = r;
+            });
+            
+            // Hand ranks
+            const handRanks = {};
+            const handSorted = Array.isArray(snap.hands) ? [...snap.hands].sort((a,b)=> (b.score||0) - (a.score||0)) : [];
+            r = 1;
+            handSorted.forEach((h,i)=>{
+                if (i>0 && (h.score||0) === (handSorted[i-1].score||0)) { } else { r = i+1; }
+                handRanks[String(h.serial)] = r;
+            });
+            
+            // Final ranks from points (wishPoints + handPoints)
+            const serials = new Set([...Object.keys(wishRanks), ...Object.keys(handRanks)]);
+            const finals = [];
+            serials.forEach(s=>{
+                const wr = wishRanks[s];
+                const hr = handRanks[s];
+                const wishPoints = wr ? (tt - wr + 1) : 0;
+                const handPoints = hr ? (tt - hr + 1) : 0;
+                finals.push({ serial: s, score: wishPoints + handPoints });
+            });
+            finals.sort((a,b)=> b.score - a.score);
+            const finalRanks = {};
+            r = 1;
+            finals.forEach((f,i)=>{
+                if (i>0 && f.score === finals[i-1].score) { } else { r = i+1; }
+                finalRanks[f.serial] = r;
+            });
+            
+            // Persist baseline
+            const baselineValue = { name, hand: handRanks, wish: wishRanks, final: finalRanks, timestamp: new Date().toISOString() };
+            await supabaseClient.from('settings').upsert({ year: currentYear, key: 'rank_baseline', value: baselineValue }, { onConflict: 'year,key' });
+            rankBaseline = baselineValue;
+            
+            // Re-render UI with new baseline
+            renderTeamList();
+            renderWishRanking();
+            updateTable();
+            alert(`已设置快照 "${name}" 为排名对比基线`);
+            setTimeout(() => { location.reload(); }, 500);
+        } catch (e) {
+            alert('对比失败：' + e.message);
+        }
+    }
+
+    async function exportSnapshot(name) {
+        if (!supabaseClient || !currentYear) { alert('服务器未初始化'); return; }
+        try {
+            const { data } = await supabaseClient.from('settings').select('*').eq('year', currentYear).eq('key', `data_snapshot:${name}`).limit(1);
+            if (!data || data.length === 0) { alert('未找到快照'); return; }
+            const snap = data[0].value || {};
+            
+            const wb = XLSX.utils.book_new();
+            
+            // Teams
+            const teams = Array.isArray(snap.teams) ? snap.teams : [];
+            const teamsRows = teams.map(t => ({
+                序号: t.serial,
+                队伍名称: (typeof t.name === 'string') ? (t.name.startsWith('data:image') ? '[图片队伍]' : t.name) : '',
+                成员: Array.isArray(t.members) ? t.members.join(', ') : '',
+                人数: t.count || 0,
+                预约时间: t.time || '',
+                排序键: t.sortKey || 0
+            }));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(teamsRows), 'Teams');
+            
+            // Wishes
+            const wishes = Array.isArray(snap.wishes) ? snap.wishes : [];
+            const wishesRows = wishes.map(w => ({
+                序号: w.serial,
+                队伍名称: (typeof w.team === 'string') ? (w.team.startsWith('data:image') ? '[图片队伍]' : w.team) : '',
+                心愿1: (w.wishes && w.wishes[0]) || 0,
+                心愿2: (w.wishes && w.wishes[1]) || 0,
+                心愿3: (w.wishes && w.wishes[2]) || 0,
+                心愿4: (w.wishes && w.wishes[3]) || 0,
+                心愿5: (w.wishes && w.wishes[4]) || 0,
+                总计: w.total || 0
+            }));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(wishesRows), 'Wishes');
+            
+            // Hands
+            const hands = Array.isArray(snap.hands) ? snap.hands : [];
+            const handsRows = hands.map(h => {
+                let cardsStr = '';
+                const cards = Array.isArray(h.cards) ? h.cards : [];
+                cardsStr = cards.map(c => {
+                    if (c && typeof c === 'object' && c.suit && c.rankLabel) return `${c.suit}${c.rankLabel}`;
+                    if (typeof c === 'string') return c;
+                    return '';
+                }).filter(Boolean).join(' ');
+                return {
+                    序号: h.serial,
+                    队伍名称: (typeof h.team === 'string') ? (h.team.startsWith('data:image') ? '[图片队伍]' : h.team) : '',
+                    牌型名称: h.handTypeName || '',
+                    牌面: cardsStr,
+                    分数: h.score || 0
+                };
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(handsRows), 'Hands');
+            
+            // Gift Tiers
+            const tiers = Array.isArray(snap.giftTiers) ? snap.giftTiers : [];
+            const tierRows = tiers.map(t => ({ 名称: t.name, Min: t.min, Max: t.max, 颜色: t.color, 值: t.value }));
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tierRows), 'GiftTiers');
+            
+            // Gift Images (meta)
+            const images = Array.isArray(snap.giftImages) ? snap.giftImages : [];
+            const imageRows = images.map(i => {
+                let urlVal = i.url || '';
+                // Excel cell limit is 32767 characters. If base64 is too long, truncate/replace it.
+                if (urlVal.length > 32000) {
+                    urlVal = '[图片数据过长，无法导出到Excel]';
+                }
+                return { 描述: i.desc || '', URL或Base64: urlVal };
+            });
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(imageRows), 'GiftImages');
+            
+            // --- Gift Selection (Calculated) ---
+            const tt = snap.totalTeams || 0;
+            
+            // 1. Wish Ranks
+            const wishRanks = {};
+            const wishSorted = Array.isArray(snap.wishes) ? [...snap.wishes].sort((a,b)=> (b.total||0) - (a.total||0)) : [];
+            let rWish = 1;
+            wishSorted.forEach((w,i)=>{
+                if (i>0 && (w.total||0) === (wishSorted[i-1].total||0)) { /* tie */ } else { rWish = i+1; }
+                wishRanks[String(w.serial)] = rWish;
+            });
+            
+            // 2. Hand Ranks
+            const handRanks = {};
+            const handSorted = Array.isArray(snap.hands) ? [...snap.hands].sort((a,b)=> (b.score||0) - (a.score||0)) : [];
+            let rHand = 1;
+            handSorted.forEach((h,i)=>{
+                if (i>0 && (h.score||0) === (handSorted[i-1].score||0)) { } else { rHand = i+1; }
+                handRanks[String(h.serial)] = rHand;
+            });
+            
+            // 3. Final Ranks
+            const allSerials = new Set();
+            // Only consider teams that have both wish and hand data (same rule as main logic)
+            Object.keys(wishRanks).forEach(s => {
+                if (handRanks[s]) allSerials.add(s);
+            });
+
+            const finals = [];
+            allSerials.forEach(s => {
+                const wr = wishRanks[s];
+                const hr = handRanks[s];
+                const wishPoints = tt - wr + 1;
+                const handPoints = tt - hr + 1;
+                finals.push({ serial: s, score: wishPoints + handPoints });
+            });
+            
+            finals.sort((a,b)=> b.score - a.score);
+            
+            // 4. Build Gift Selection Data
+            const giftSelectionRows = [];
+            let rFinal = 1;
+            finals.forEach((f, i) => {
+                if (i>0 && f.score === finals[i-1].score) { } else { rFinal = i+1; }
+                const rank = rFinal;
+                
+                const team = Array.isArray(snap.teams) ? snap.teams.find(t => String(t.serial) === String(f.serial)) : null;
+                if (!team) return;
+                
+                // Find Tier
+                const tiers = Array.isArray(snap.giftTiers) ? snap.giftTiers : [];
+                const tier = tiers.find(t => rank >= t.min && rank <= t.max);
+                const tierName = tier ? tier.name : '-';
+                
+                const teamName = (typeof team.name === 'string') ? (team.name.startsWith('data:image') ? '[图片队伍]' : team.name) : '';
+                const members = Array.isArray(team.members) ? team.members : [];
+                const gifts = team.gifts || {};
+                
+                if (members.length > 0) {
+                    members.forEach(member => {
+                        const g = gifts[member] || {};
+                        const giftId = g.id ? String(g.id) : '';
+                        const remark = g.remark ? String(g.remark) : '';
+                        giftSelectionRows.push({
+                            "最终排名": rank,
+                            "礼物档位": tierName,
+                            "队伍名称": teamName,
+                            "成员名称": member,
+                            "礼物选择": giftId,
+                            "备注": remark
+                        });
+                    });
+                } else {
+                     giftSelectionRows.push({
+                        "最终排名": rank,
+                        "礼物档位": tierName,
+                        "队伍名称": teamName,
+                        "成员名称": "无成员信息",
+                        "礼物选择": "",
+                        "备注": ""
+                    });
+                }
+            });
+            
+            const wsGift = XLSX.utils.json_to_sheet(giftSelectionRows);
+            wsGift['!cols'] = [
+                { wch: 8 },  // 最终排名
+                { wch: 10 }, // 礼物档位
+                { wch: 20 }, // 队伍名称
+                { wch: 15 }, // 成员名称
+                { wch: 15 }, // 礼物选择
+                { wch: 20 }  // 备注
+            ];
+            XLSX.utils.book_append_sheet(wb, wsGift, 'GiftSelection');
+
+            // Settings
+            const settingsRows = [{ 年份: snap.year || currentYear, 队伍总数: snap.totalTeams || 0, 快照名: name, 导出时间: new Date().toLocaleString() }];
+            XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(settingsRows), 'Settings');
+            
+            const filename = `快照_${name}.xlsx`;
+            XLSX.writeFile(wb, filename);
+        } catch (e) {
+            alert('导出失败：' + e.message);
+        }
+    }
+
     function updateTotalTeams() {
         const input = document.getElementById('totalTeamsInput');
         const val = parseInt(input.value);
@@ -1499,16 +1900,16 @@
         document.getElementById('tab-' + tabId).classList.add('active');
         // Find button
         const btns = document.querySelectorAll('.tab-btn');
-        if (tabId === 'calc') {
+        if (tabId === 'teams') {
             btns[0].classList.add('active');
+        }
+        if (tabId === 'calc') {
+            btns[1].classList.add('active');
             updateCalculatorDropdowns();
         }
         if (tabId === 'wishes') {
-            btns[1].classList.add('active');
-            renderWishDropdowns();
-        }
-        if (tabId === 'teams') {
             btns[2].classList.add('active');
+            renderWishDropdowns();
         }
         if (tabId === 'final') {
             btns[3].classList.add('active');
@@ -1517,6 +1918,11 @@
         if (tabId === 'gifts') {
             btns[4].classList.add('active');
             renderGiftSelection();
+        }
+        if (tabId === 'changes') {
+            const idx = 5;
+            btns[idx].classList.add('active');
+            renderRankChangeTab();
         }
     }
 
@@ -1974,29 +2380,106 @@
         return typeof str === 'string' && str.startsWith('data:image');
     }
 
-    function handleTeamImageSelect(input) {
+    // Deprecated old image handler
+    function handleTeamImageSelect(input) {}
+
+    // Deprecated
+    function clearTeamImage() {}
+
+    let teamRowImages = {}; // { rowId: base64Data }
+    
+    function addTeamRow(data = null) {
+        const container = document.getElementById('teamRowsContainer');
+        if (!container) return;
+        
+        const rowId = 'row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const div = document.createElement('div');
+        div.className = 'team-row';
+        div.id = rowId;
+        div.style.borderBottom = '1px dashed #ccc';
+        div.style.paddingBottom = '10px';
+        div.style.marginBottom = '10px';
+        
+        const serial = data ? data.serial : '';
+        const name = data && !isImage(data.name) ? data.name : '';
+        const members = data ? data.members.join(' ') : '';
+        const time = data ? data.time : '';
+        
+        // Image handling
+        let imagePreviewStyle = 'none';
+        let inputDisabled = false;
+        let inputPlaceholder = '队伍名称';
+        let imgSrc = '';
+        
+        if (data && isImage(data.name)) {
+            teamRowImages[rowId] = data.name;
+            imagePreviewStyle = 'flex';
+            inputDisabled = true;
+            inputPlaceholder = '(已选择图片队名)';
+            imgSrc = data.name;
+        }
+
+        div.innerHTML = `
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; align-items: center;">
+                <input type="text" class="team-serial" placeholder="序号" value="${serial}" style="width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <div style="flex: 1; display: flex; gap: 5px; align-items: center;">
+                    <input type="text" class="team-name" placeholder="${inputPlaceholder}" value="${name}" ${inputDisabled ? 'disabled' : ''} style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                    <input type="file" id="file_${rowId}" accept="image/*" style="display:none" onchange="handleTeamRowImage('${rowId}', this)">
+                    <button onclick="document.getElementById('file_${rowId}').click()" style="padding: 5px 10px; font-size: 12px;">上传图片</button>
+                    <div id="preview_${rowId}" style="display:${imagePreviewStyle}; align-items: center; gap: 5px;">
+                        <img src="${imgSrc}" style="height: 30px; border: 1px solid #ddd;">
+                        <button onclick="clearTeamRowImage('${rowId}')" style="padding: 0 5px; color: red;">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="input-group" style="margin-bottom: 5px; width: 100%; display: flex; gap: 10px; align-items: center;">
+                <input type="text" class="team-members" placeholder="成员 (用逗号或空格分隔)" value="${members}" style="flex: 2; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <input type="text" class="team-time" placeholder="预约时间" value="${time}" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <button onclick="removeTeamRow('${rowId}')" class="btn-danger" style="padding: 5px 10px; font-size: 12px;">删除</button>
+            </div>
+        `;
+        
+        container.appendChild(div);
+    }
+
+    function removeTeamRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) row.remove();
+        delete teamRowImages[rowId];
+    }
+
+    function handleTeamRowImage(rowId, input) {
         const file = input.files[0];
         if (!file) return;
-        
         const reader = new FileReader();
         reader.onload = function(e) {
-            currentTeamImageData = e.target.result;
-            // Update preview
-            document.getElementById('teamNamePreviewImg').src = currentTeamImageData;
-            document.getElementById('teamNamePreview').style.display = 'flex';
-            document.getElementById('teamName').disabled = true;
-            document.getElementById('teamName').placeholder = "(已选择图片队名)";
-            document.getElementById('teamName').value = "";
+            teamRowImages[rowId] = e.target.result;
+            const row = document.getElementById(rowId);
+            const nameInput = row.querySelector('.team-name');
+            const previewDiv = document.getElementById('preview_' + rowId);
+            const img = previewDiv.querySelector('img');
+            
+            img.src = e.target.result;
+            previewDiv.style.display = 'flex';
+            nameInput.disabled = true;
+            nameInput.placeholder = '(已选择图片队名)';
+            nameInput.value = '';
         };
         reader.readAsDataURL(file);
     }
 
-    function clearTeamImage() {
-        currentTeamImageData = null;
-        document.getElementById('teamNameImageInput').value = ''; // Reset file input
-        document.getElementById('teamNamePreview').style.display = 'none';
-        document.getElementById('teamName').disabled = false;
-        document.getElementById('teamName').placeholder = "队伍名称";
+    function clearTeamRowImage(rowId) {
+        delete teamRowImages[rowId];
+        const row = document.getElementById(rowId);
+        const nameInput = row.querySelector('.team-name');
+        const previewDiv = document.getElementById('preview_' + rowId);
+        const fileInput = document.getElementById('file_' + rowId);
+        
+        fileInput.value = '';
+        previewDiv.style.display = 'none';
+        nameInput.disabled = false;
+        nameInput.placeholder = '队伍名称';
     }
 
     function editTeam(id) {
@@ -2005,23 +2488,12 @@
 
         currentEditingTeamId = id;
         
-        // Populate inputs
-        document.getElementById('teamSerial').value = team.serial;
-        document.getElementById('teamMembers').value = team.members.join(' ');
-        document.getElementById('teamTime').value = team.time;
+        // Clear existing rows
+        document.getElementById('teamRowsContainer').innerHTML = '';
+        teamRowImages = {};
         
-        // Handle name (text or image)
-        if (isImage(team.name)) {
-            currentTeamImageData = team.name;
-            document.getElementById('teamNamePreviewImg').src = currentTeamImageData;
-            document.getElementById('teamNamePreview').style.display = 'flex';
-            document.getElementById('teamName').disabled = true;
-            document.getElementById('teamName').placeholder = "(已选择图片队名)";
-            document.getElementById('teamName').value = "";
-        } else {
-            clearTeamImage();
-            document.getElementById('teamName').value = team.name;
-        }
+        // Add single row with data
+        addTeamRow(team);
 
         // Update UI state
         document.getElementById('saveTeamBtn').textContent = '更新队伍';
@@ -2035,24 +2507,133 @@
     function cancelTeamEdit() {
         currentEditingTeamId = null;
         
-        // Clear inputs
-        document.getElementById('teamSerial').value = '';
-        document.getElementById('teamName').value = '';
-        document.getElementById('teamMembers').value = '';
-        document.getElementById('teamTime').value = '';
-        clearTeamImage();
+        // Reset rows
+        document.getElementById('teamRowsContainer').innerHTML = '';
+        teamRowImages = {};
+        addTeamRow(); // Add one empty row
         
         // Reset UI state
-        document.getElementById('saveTeamBtn').textContent = '保存队伍';
-        document.getElementById('saveTeamBtn').style.backgroundColor = ''; // Reset to default (usually inherited or empty)
+        document.getElementById('saveTeamBtn').textContent = '批量保存';
+        document.getElementById('saveTeamBtn').style.backgroundColor = ''; 
         document.getElementById('cancelTeamEditBtn').style.display = 'none';
     }
+
+    function saveAllTeams() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        const rows = document.querySelectorAll('.team-row');
+        if (rows.length === 0) return;
+        
+        let newTeams = [];
+        let errors = [];
+        
+        rows.forEach((row, index) => {
+            const rowId = row.id;
+            const serial = row.querySelector('.team-serial').value.trim();
+            let name = row.querySelector('.team-name').value.trim();
+            const membersStr = row.querySelector('.team-members').value.trim();
+            const time = row.querySelector('.team-time').value.trim();
+            
+            if (teamRowImages[rowId]) {
+                name = teamRowImages[rowId];
+            }
+            
+            if (!serial && !name && !membersStr && !time) return; // Skip empty rows
+            
+            if (!serial || !name || !time) {
+                errors.push(`第 ${index + 1} 行：请填写完整信息(序号、名称、时间)`);
+                return;
+            }
+            
+            const members = membersStr.split(/[,，\s]+/).filter(m => m);
+            
+            newTeams.push({
+                serial, name, members, time,
+                count: members.length,
+                sortKey: parseTimeKey(time)
+            });
+        });
+        
+        if (errors.length > 0) {
+            alert(errors.join('\n'));
+            return;
+        }
+        
+        if (newTeams.length === 0) {
+            alert('没有有效数据');
+            return;
+        }
+
+        if (currentEditingTeamId) {
+            // Edit Mode (Single)
+            const teamData = newTeams[0];
+            const index = teamList.findIndex(t => t.id === currentEditingTeamId);
+            if (index !== -1) {
+                 const conflict = teamList.find(t => t.serial === teamData.serial && t.id !== currentEditingTeamId);
+                 if (conflict) {
+                     alert(`序号 ${teamData.serial} 已被占用`);
+                     return;
+                 }
+                 
+                 snapshotRanks();
+                 insertRankSnapshot('single', 'team', teamData.serial, '更新队伍', { name: teamData.name });
+
+                 teamList[index] = { ...teamList[index], ...teamData };
+                 upsertTeams([teamList[index]]);
+                 cancelTeamEdit();
+                 alert('更新成功');
+            }
+        } else {
+            // Batch Mode
+            // Check conflicts
+            let conflicts = [];
+            newTeams.forEach(t => {
+                const conflict = teamList.find(ex => ex.serial === t.serial);
+                if (conflict) conflicts.push(t.serial);
+            });
+            
+            if (conflicts.length > 0) {
+                if (!confirm(`序号 ${conflicts.join(', ')} 已存在，是否覆盖？`)) return;
+            }
+            
+            snapshotRanks();
+            insertRankSnapshot('batch', 'team', 'batch', '批量添加队伍', { count: newTeams.length });
+
+            let teamsToSync = [];
+            newTeams.forEach(t => {
+                const idx = teamList.findIndex(ex => ex.serial === t.serial);
+                const newTeamObj = { id: idx >= 0 ? teamList[idx].id : Date.now().toString() + Math.random(), ...t };
+                if (idx >= 0) {
+                    teamList[idx] = newTeamObj;
+                } else {
+                    teamList.push(newTeamObj);
+                }
+                teamsToSync.push(newTeamObj);
+            });
+            
+            upsertTeams(teamsToSync);
+            
+            // Reset
+            document.getElementById('teamRowsContainer').innerHTML = '';
+            teamRowImages = {};
+            addTeamRow();
+            
+            alert(`成功保存 ${newTeams.length} 个队伍`);
+        }
+        
+        renderTeamList();
+        updateCalculatorDropdowns(); 
+    }
+
+    // Initialize first row
+    setTimeout(addTeamRow, 1000);
     
     function saveTeam() {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         
         // Snapshot current ranks before modification
         snapshotRanks();
+        insertRankSnapshot('single', 'team', document.getElementById('teamSerial').value.trim(), '保存队伍', { name: document.getElementById('teamName').value.trim() });
 
         const serial = document.getElementById('teamSerial').value.trim();
         let name = document.getElementById('teamName').value.trim();
@@ -2249,8 +2830,9 @@
         if (confirm('确定删除此队伍吗？')) {
             // Snapshot current ranks before modification
             snapshotRanks();
-
             const del = teamList.find(t => t.id === id);
+            insertRankSnapshot('single', 'team', del ? del.serial : '', '删除队伍', { name: del ? del.name : '' });
+
             teamList = teamList.filter(t => t.id !== id);
             if (del) deleteTeamInCloud(del.serial);
             renderTeamList();
@@ -2295,6 +2877,8 @@
 
     function handleTeamFileUpload(event) {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        snapshotRanks();
+        insertRankSnapshot('bulk', 'team', '', '批量导入队伍', { source: 'file' });
         const file = event.target.files[0];
         if (!file) return;
         
@@ -2425,111 +3009,19 @@
     }
 
 
-    // --- Wish Calculation Functions ---
+    // --- Wish Calculation Functions (Old) ---
+    // let currentEditingWishSerial = null; // Removed to avoid conflict with Batch implementation
+    
+    // Deprecated old functions (overridden by Batch implementation below)
+    function renderWishDropdowns() {}
+    function syncWishInput(source) {}
+    function saveWish() {}
+    function cancelWishEdit() {} 
+    function editWish(serial) {} 
+    // function cancelWishEdit() {} // Overridden below
+    // function editWish(serial) {} // Overridden below
 
-    let currentEditingWishSerial = null;
-
-    function renderWishDropdowns() {
-        const serialSelect = document.getElementById('wishSerialInput');
-        const teamSelect = document.getElementById('wishTeamInput');
-        
-        // Save current selection
-        const currentSerial = serialSelect.value;
-        const currentTeam = teamSelect.value;
-
-        serialSelect.innerHTML = '<option value="">序号</option>';
-        teamSelect.innerHTML = '<option value="">队伍名称</option>';
-        
-        // Sort by serial
-        const sortedList = [...teamList].sort((a, b) => {
-            const na = parseInt(a.serial);
-            const nb = parseInt(b.serial);
-            if (!isNaN(na) && !isNaN(nb)) return na - nb;
-            return String(a.serial).localeCompare(String(b.serial));
-        });
-
-        sortedList.forEach(team => {
-            const optSerial = document.createElement('option');
-            optSerial.value = team.serial;
-            optSerial.textContent = team.serial;
-            serialSelect.appendChild(optSerial);
-            
-            const optName = document.createElement('option');
-            optName.value = team.name;
-            optName.textContent = isImage(team.name) ? `序号 ${team.serial} - [图片队伍]` : team.name;
-            teamSelect.appendChild(optName);
-        });
-
-        // Restore selection if valid
-        if (currentSerial && sortedList.some(t => t.serial === currentSerial)) serialSelect.value = currentSerial;
-        if (currentTeam && sortedList.some(t => t.name === currentTeam)) teamSelect.value = currentTeam;
-    }
-
-    function syncWishInput(source) {
-        const serialSelect = document.getElementById('wishSerialInput');
-        const teamSelect = document.getElementById('wishTeamInput');
-        
-        if (source === 'serial') {
-            const selectedSerial = serialSelect.value;
-            const team = teamList.find(t => t.serial === selectedSerial);
-            if (team) {
-                teamSelect.value = team.name;
-            } else {
-                teamSelect.value = "";
-            }
-        } else {
-            const selectedTeam = teamSelect.value;
-            const team = teamList.find(t => t.name === selectedTeam);
-            if (team) {
-                serialSelect.value = team.serial;
-            } else {
-                serialSelect.value = "";
-            }
-        }
-    }
-
-    function saveWish() {
-        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
-        
-        // Snapshot current ranks before modification
-        snapshotRanks();
-
-        const serial = document.getElementById('wishSerialInput').value;
-        const teamName = document.getElementById('wishTeamInput').value;
-        
-        if (!serial || !teamName) {
-            alert('请选择队伍');
-            return;
-        }
-
-        const w1 = parseInt(document.getElementById('wish1').value) || 0;
-        const w2 = parseInt(document.getElementById('wish2').value) || 0;
-        const w3 = parseInt(document.getElementById('wish3').value) || 0;
-        const w4 = parseInt(document.getElementById('wish4').value) || 0;
-        const w5 = parseInt(document.getElementById('wish5').value) || 0;
-        
-        const total = w1 + w2 + w3 + w4 + w5;
-        
-        const wishData = {
-            serial: serial,
-            team: teamName,
-            wishes: [w1, w2, w3, w4, w5],
-            total: total
-        };
-        
-        // Check if exists
-        const index = wishList.findIndex(w => w.serial === serial);
-        if (index !== -1) {
-            wishList[index] = wishData;
-        } else {
-            wishList.push(wishData);
-        }
-        
-        renderWishRanking();
-        upsertWishes([wishData]);
-        cancelWishEdit();
-    }
-
+    /*
     function cancelWishEdit() {
         document.getElementById('wishSerialInput').value = "";
         document.getElementById('wishTeamInput').value = "";
@@ -2565,14 +3057,19 @@
         document.getElementById('saveWishBtn').textContent = '更新数据';
         document.getElementById('cancelWishEditBtn').style.display = 'inline-block';
         
-        currentEditingWishSerial = serial;
+        // Use global from new batch logic or define locally if still needed for old logic? 
+        // Actually this old logic tries to use currentEditingWishSerial which we commented out.
+        // So this whole block is dead code anyway since UI calls new functions.
+        // But to be safe let's just comment out body.
     }
+    */
 
     function deleteWish(serial) {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         if(confirm('确定删除该队伍的心愿数据吗？')) {
             // Snapshot current ranks before modification
             snapshotRanks();
+            insertRankSnapshot('single', 'wish', serial, '删除心愿', {});
 
             wishList = wishList.filter(w => w.serial !== serial);
             deleteWishInCloud(serial);
@@ -2633,6 +3130,8 @@
 
     function handleWishFileUpload(event) {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        snapshotRanks();
+        insertRankSnapshot('bulk', 'wish', '', '批量导入心愿', { source: 'file' });
         const file = event.target.files[0];
         if (!file) return;
         
@@ -2759,6 +3258,8 @@
     }
 
     async function init() {
+        // Restore admin state
+        try { isAdmin = (localStorage.getItem('isAdmin') === 'true'); } catch (e) {}
         initHandTypeFilter();
         generateDeck();
         renderDropdowns();
@@ -3086,6 +3587,13 @@
             year: currentYear, 
             key: 'gift_images', 
             value: giftImages 
+        }, { onConflict: 'year,key' });
+
+        // Save Total Teams
+        await supabaseClient.from('settings').upsert({ 
+            year: currentYear, 
+            key: 'total_teams', 
+            value: totalTeams 
         }, { onConflict: 'year,key' });
     }
     
@@ -3481,6 +3989,7 @@
         
         // Snapshot current ranks before modification
         snapshotRanks();
+        insertRankSnapshot('bulk', 'hand', '', '批量导入手牌', { source: isFromFile ? 'file' : 'paste' });
 
         const input = document.getElementById('bulkInput').value.trim();
         if (!input) return;
@@ -3666,6 +4175,7 @@
         
         // Snapshot current ranks before modification
         snapshotRanks();
+        insertRankSnapshot('single', 'hand', document.getElementById('serialInput').value.trim(), '手牌录入', { team: document.getElementById('teamInput').value.trim(), mode: currentEditingId ? 'update' : 'insert' });
 
         const errorMsg = document.getElementById('errorMsg');
         // const inputVal = document.getElementById('cardInput').value.trim(); // Removed
@@ -3957,6 +4467,25 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
+    function deleteHand(id) {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        const hand = handHistory.find(h => h.id === id);
+        if (!hand) return;
+
+        if (confirm(`确定删除队伍 "${hand.team}" (序号: ${hand.serial}) 的手牌记录吗？`)) {
+            // Snapshot current ranks before modification
+            snapshotRanks();
+            insertRankSnapshot('single', 'hand', hand.serial, '删除手牌', { handId: id, cards: hand.cards });
+
+            handHistory = handHistory.filter(h => h.id !== id);
+            
+            deleteHandsInCloud(hand.serial);
+            
+            updateTable();
+        }
+    }
+
     function cancelEdit() {
         currentEditingId = null;
         
@@ -4064,12 +4593,23 @@
             // 操作
             if (isAdmin) {
                 const tdAction = document.createElement('td');
+                
                 const editBtn = document.createElement('button');
                 editBtn.textContent = '编辑';
                 editBtn.style.padding = '5px 10px';
                 editBtn.style.fontSize = '12px';
+                editBtn.style.marginRight = '5px';
                 editBtn.onclick = () => editEntry(entry.id);
                 tdAction.appendChild(editBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.textContent = '删除';
+                delBtn.className = 'btn-danger';
+                delBtn.style.padding = '5px 10px';
+                delBtn.style.fontSize = '12px';
+                delBtn.onclick = () => deleteHand(entry.id);
+                tdAction.appendChild(delBtn);
+
                 tr.appendChild(tdAction);
             }
 
@@ -4192,11 +4732,12 @@
     }
 
     function getRankChangeHtml(serial, currentRank, type) {
-        if (isInitialLoad) return '';
-        
-        const prevRank = previousRanks[type][serial];
+        // Use persisted baseline if available
+        if (!rankBaseline || !rankBaseline[type] || Object.keys(rankBaseline[type]).length === 0) return '';
+        const prevRank = rankBaseline[type][serial];
         if (prevRank === undefined) {
-            return '<span style="font-size:12px; color:var(--xmas-red); font-weight:bold; margin-left:5px;">新进榜</span>';
+            // New Entry - Display below number
+            return '<div style="font-size:11px; color:var(--xmas-red); font-weight:bold; margin-top:2px; line-height: 1;">新进榜</div>';
         }
         
         if (prevRank === currentRank) {
@@ -4211,6 +4752,701 @@
         }
     }
 
+    // Rank Change Logs (Snapshots & Computed)
+    async function insertRankSnapshot(opType, refType, refIdentifier, summary, details) {
+        try {
+            if (!supabaseClient || !currentYear) return;
+            const row = {
+                year: currentYear,
+                operation_type: opType,
+                ref_type: refType,
+                ref_identifier: String(refIdentifier || ''),
+                operator: isAdmin ? 'admin' : 'user',
+                status: 'snapshot',
+                summary: summary || '',
+                details: details || {},
+                pre_hand_ranks: previousRanks.hand,
+                pre_wish_ranks: previousRanks.wish,
+                pre_final_ranks: previousRanks.final
+            };
+            await supabaseClient.from('rank_change_logs').insert(row);
+        } catch (e) {
+            console.warn('insertRankSnapshot failed', e);
+        }
+    }
+
+    async function computeRankChange(logId) {
+        try {
+            if (!supabaseClient || !currentYear) return;
+            const { data, error } = await supabaseClient.from('rank_change_logs').select('*').eq('id', logId).single();
+            if (error || !data) { alert('无法读取记录'); return; }
+
+            const postHand = calculateHandRanks();
+            const postWish = calculateWishRanks();
+            const postFinal = calculateFinalRanks();
+
+            function buildDiff(pre, post) {
+                const serials = new Set([...Object.keys(pre||{}), ...Object.keys(post||{})]);
+                const changes = [];
+                serials.forEach(s => {
+                    const a = pre ? pre[s] : undefined;
+                    const b = post ? post[s] : undefined;
+                    if (a === undefined && b === undefined) return;
+                    if (a === b) return;
+                    changes.push({ serial: s, from: a ?? null, to: b ?? null, delta: (a!=null && b!=null) ? a - b : null });
+                });
+                return changes.sort((x,y)=>{
+                    const dx = (x.delta==null)?0:Math.abs(x.delta);
+                    const dy = (y.delta==null)?0:Math.abs(y.delta);
+                    return dy - dx;
+                });
+            }
+
+            const diff = {
+                hand: buildDiff(data.pre_hand_ranks, postHand),
+                wish: buildDiff(data.pre_wish_ranks, postWish),
+                final: buildDiff(data.pre_final_ranks, postFinal),
+                summary: {
+                    hand_changed: (buildDiff(data.pre_hand_ranks, postHand)).length,
+                    wish_changed: (buildDiff(data.pre_wish_ranks, postWish)).length,
+                    final_changed: (buildDiff(data.pre_final_ranks, postFinal)).length
+                }
+            };
+
+            await supabaseClient.from('rank_change_logs').update({
+                status: 'computed',
+                post_hand_ranks: postHand,
+                post_wish_ranks: postWish,
+                post_final_ranks: postFinal,
+                diff: diff
+            }).eq('id', logId);
+
+            renderRankChangeTab();
+        } catch (e) {
+            alert('计算失败: ' + e.message);
+        }
+    }
+
+    async function renderRankChangeTab() {
+        const container = document.getElementById('rankChangeContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        
+        if (!supabaseClient || !currentYear) { container.textContent = '未连接数据库或未选择年份'; return; }
+        
+        const { data: snapshots } = await supabaseClient.from('rank_change_logs').select('*').eq('year', currentYear).eq('status', 'snapshot').order('created_at', { ascending: false });
+        const { data: computed } = await supabaseClient.from('rank_change_logs').select('*').eq('year', currentYear).eq('status', 'computed').order('created_at', { ascending: false });
+
+        const snapSection = document.createElement('div');
+        snapSection.innerHTML = `<h3 style="color: var(--xmas-green);">待计算记录</h3>`;
+        const snapTable = document.createElement('table');
+        snapTable.className = 'team-list-table';
+        snapTable.innerHTML = `
+            <thead><tr>
+                <th style="width:160px;">时间</th>
+                <th style="width:80px;">类型</th>
+                <th style="width:100px;">关联</th>
+                <th>摘要</th>
+                <th style="width:120px;">操作</th>
+            </tr></thead>
+            <tbody></tbody>`;
+        const snapTbody = snapTable.querySelector('tbody');
+        (snapshots||[]).forEach(row => {
+            const tr = document.createElement('tr');
+            const brief = (row.operation_type === 'bulk') ? '批量操作(点击计算查看详情)' : (row.summary || '单条编辑');
+            tr.innerHTML = `
+                <td>${new Date(row.created_at).toLocaleString()}</td>
+                <td>${row.operation_type}</td>
+                <td>${row.ref_type || ''} ${row.ref_identifier || ''}</td>
+                <td>${brief}</td>
+            `;
+            const tdOp = document.createElement('td');
+            const btn = document.createElement('button');
+            btn.textContent = '计算排名变化';
+            btn.className = 'btn-secondary';
+            btn.onclick = () => computeRankChange(row.id);
+            tdOp.appendChild(btn);
+            tr.appendChild(tdOp);
+            snapTbody.appendChild(tr);
+        });
+        snapSection.appendChild(snapTable);
+        container.appendChild(snapSection);
+
+        const compSection = document.createElement('div');
+        compSection.innerHTML = `<h3 style="color: var(--xmas-green);">计算结果记录</h3>`;
+        const compTable = document.createElement('table');
+        compTable.className = 'team-list-table';
+        compTable.innerHTML = `
+            <thead><tr>
+                <th style="width:160px;">时间</th>
+                <th style="width:80px;">类型</th>
+                <th style="width:100px;">关联</th>
+                <th>摘要</th>
+                <th style="width:240px;">变化统计</th>
+                <th style="width:120px;">详情</th>
+            </tr></thead>
+            <tbody></tbody>`;
+        const compTbody = compTable.querySelector('tbody');
+        (computed||[]).forEach(row => {
+            const tr = document.createElement('tr');
+            const stats = row.diff && row.diff.summary ? row.diff.summary : { hand_changed: 0, wish_changed: 0, final_changed: 0 };
+            tr.innerHTML = `
+                <td>${new Date(row.created_at).toLocaleString()}</td>
+                <td>${row.operation_type}</td>
+                <td>${row.ref_type || ''} ${row.ref_identifier || ''}</td>
+                <td>${row.summary || ''}</td>
+                <td>手牌:${stats.hand_changed} / 心愿:${stats.wish_changed} / 总榜:${stats.final_changed}</td>
+            `;
+            const tdDetail = document.createElement('td');
+            const btn = document.createElement('button');
+            btn.textContent = '显示详细';
+            btn.className = 'btn-secondary';
+            const detailDiv = document.createElement('div');
+            detailDiv.style.display = 'none';
+            detailDiv.style.padding = '10px';
+            detailDiv.style.background = '#fff';
+            detailDiv.style.border = '1px solid #eee';
+            detailDiv.style.marginTop = '8px';
+            function renderList(title, list) {
+                const wrap = document.createElement('div');
+                const h = document.createElement('div'); h.textContent = title; h.style.fontWeight = 'bold'; h.style.marginBottom = '6px';
+                wrap.appendChild(h);
+                (list||[]).forEach(it => {
+                    const p = document.createElement('div');
+                    p.textContent = `序号 ${it.serial}: ${it.from ?? '-'} => ${it.to ?? '-'} (${it.delta==null?'-':(it.delta>0?('↑'+it.delta):('↓'+Math.abs(it.delta)))})`;
+                    wrap.appendChild(p);
+                });
+                return wrap;
+            }
+            detailDiv.appendChild(renderList('手牌变化', row.diff ? row.diff.hand : []));
+            detailDiv.appendChild(renderList('心愿变化', row.diff ? row.diff.wish : []));
+            detailDiv.appendChild(renderList('最终榜变化', row.diff ? row.diff.final : []));
+            btn.onclick = () => { detailDiv.style.display = (detailDiv.style.display==='none') ? 'block' : 'none'; };
+            tdDetail.appendChild(btn);
+            tdDetail.appendChild(detailDiv);
+            tr.appendChild(tdDetail);
+            const trWrap = document.createElement('tr');
+            compTbody.appendChild(tr);
+        });
+        compSection.appendChild(compTable);
+        container.appendChild(compSection);
+    }
+
+    // --- Batch Wish Functions (Appended/Redefined) ---
+    let currentEditingWishSerial = null;
+
+    function addWishRow(data = null) {
+        const container = document.getElementById('wishRowsContainer');
+        if (!container) return;
+        
+        const rowId = 'wish_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const div = document.createElement('div');
+        div.className = 'wish-row';
+        div.id = rowId;
+        div.style.borderBottom = '1px dashed #ccc';
+        div.style.paddingBottom = '10px';
+        div.style.marginBottom = '10px';
+        
+        const serial = data ? data.serial : '';
+        const teamName = data ? data.team : '';
+        const w1 = data ? (data.wishes[0] || '') : '';
+        const w2 = data ? (data.wishes[1] || '') : '';
+        const w3 = data ? (data.wishes[2] || '') : '';
+        const w4 = data ? (data.wishes[3] || '') : '';
+        const w5 = data ? (data.wishes[4] || '') : '';
+
+        let serialOptions = '<option value="">序号</option>';
+        let teamOptions = '<option value="">队伍名称</option>';
+        
+        const sortedList = [...teamList].sort((a, b) => {
+            const na = parseInt(a.serial);
+            const nb = parseInt(b.serial);
+            if (!isNaN(na) && !isNaN(nb)) return na - nb;
+            return String(a.serial).localeCompare(String(b.serial));
+        });
+
+        sortedList.forEach(t => {
+            serialOptions += `<option value="${t.serial}" ${t.serial == serial ? 'selected' : ''}>${t.serial}</option>`;
+            teamOptions += `<option value="${t.name}" ${t.name == teamName ? 'selected' : ''}>${isImage(t.name) ? `序号 ${t.serial} - [图片队伍]` : t.name}</option>`;
+        });
+
+        div.innerHTML = `
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; align-items: center;">
+                <select class="wish-serial" style="width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncWishInput('${rowId}', 'serial')">
+                    ${serialOptions}
+                </select>
+                <select class="wish-team" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncWishInput('${rowId}', 'team')">
+                    ${teamOptions}
+                </select>
+                <button onclick="removeWishRow('${rowId}')" class="btn-danger" style="padding: 5px 10px; font-size: 12px;">删除</button>
+            </div>
+            <div class="input-group" style="margin-bottom: 5px; width: 100%; display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="number" class="wish-val w1" placeholder="1颗" value="${w1}" style="flex: 1; min-width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <input type="number" class="wish-val w2" placeholder="2颗" value="${w2}" style="flex: 1; min-width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <input type="number" class="wish-val w3" placeholder="3颗" value="${w3}" style="flex: 1; min-width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <input type="number" class="wish-val w4" placeholder="4颗" value="${w4}" style="flex: 1; min-width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                <input type="number" class="wish-val w5" placeholder="5颗" value="${w5}" style="flex: 1; min-width: 80px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+            </div>
+        `;
+        
+        container.appendChild(div);
+    }
+
+    function removeWishRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) row.remove();
+    }
+
+    function syncWishInput(rowId, source) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        
+        const serialSelect = row.querySelector('.wish-serial');
+        const teamSelect = row.querySelector('.wish-team');
+        
+        if (source === 'serial') {
+            const selectedSerial = serialSelect.value;
+            const team = teamList.find(t => t.serial === selectedSerial);
+            if (team) teamSelect.value = team.name;
+            else teamSelect.value = "";
+        } else {
+            const selectedTeam = teamSelect.value;
+            const team = teamList.find(t => t.name === selectedTeam);
+            if (team) serialSelect.value = team.serial;
+            else serialSelect.value = "";
+        }
+    }
+
+    function editWish(serial) {
+        const wish = wishList.find(w => w.serial === serial);
+        if (!wish) return;
+        
+        currentEditingWishSerial = serial;
+        
+        const container = document.getElementById('wishRowsContainer');
+        container.innerHTML = '';
+        
+        addWishRow(wish);
+        
+        document.getElementById('saveWishBtn').textContent = '更新数据';
+        document.getElementById('cancelWishEditBtn').style.display = 'inline-block';
+        
+        // Scroll to form
+        const form = document.getElementById('wishFormSection');
+        if (form) form.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelWishEdit() {
+        currentEditingWishSerial = null;
+        
+        const container = document.getElementById('wishRowsContainer');
+        container.innerHTML = '';
+        addWishRow();
+        
+        document.getElementById('saveWishBtn').textContent = '批量保存';
+        document.getElementById('cancelWishEditBtn').style.display = 'none';
+    }
+
+    function saveAllWishes() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        const rows = document.querySelectorAll('.wish-row');
+        if (rows.length === 0) return;
+        
+        let newWishes = [];
+        let errors = [];
+        
+        rows.forEach((row, index) => {
+            const serial = row.querySelector('.wish-serial').value;
+            const teamName = row.querySelector('.wish-team').value;
+            
+            if (!serial || !teamName) {
+                const inputs = row.querySelectorAll('.wish-val');
+                let hasVal = false;
+                inputs.forEach(inp => { if (inp.value) hasVal = true; });
+                if (!hasVal && !serial && !teamName) return; 
+                errors.push(`第 ${index + 1} 行：请选择队伍`);
+                return;
+            }
+            
+            const w1 = parseInt(row.querySelector('.w1').value) || 0;
+            const w2 = parseInt(row.querySelector('.w2').value) || 0;
+            const w3 = parseInt(row.querySelector('.w3').value) || 0;
+            const w4 = parseInt(row.querySelector('.w4').value) || 0;
+            const w5 = parseInt(row.querySelector('.w5').value) || 0;
+            
+            const total = w1 + w2 + w3 + w4 + w5;
+            
+            newWishes.push({
+                serial, team: teamName, wishes: [w1, w2, w3, w4, w5], total
+            });
+        });
+        
+        if (errors.length > 0) {
+            alert(errors.join('\n'));
+            return;
+        }
+        
+        if (newWishes.length === 0) {
+            alert('没有有效数据');
+            return;
+        }
+        
+        if (currentEditingWishSerial) {
+             const wishData = newWishes[0];
+             snapshotRanks();
+             insertRankSnapshot('single', 'wish', wishData.serial, '更新心愿', { team: wishData.team });
+             const index = wishList.findIndex(w => w.serial === wishData.serial);
+             if (index !== -1) wishList[index] = wishData;
+             else wishList.push(wishData);
+             upsertWishes([wishData]);
+             cancelWishEdit();
+             alert('更新成功');
+        } else {
+             snapshotRanks();
+             insertRankSnapshot('batch', 'wish', 'batch', '批量录入心愿', { count: newWishes.length });
+             newWishes.forEach(wishData => {
+                 const index = wishList.findIndex(w => w.serial === wishData.serial);
+                 if (index !== -1) wishList[index] = wishData;
+                 else wishList.push(wishData);
+             });
+             upsertWishes(newWishes);
+             document.getElementById('wishRowsContainer').innerHTML = '';
+             addWishRow();
+             alert(`成功保存 ${newWishes.length} 条心愿记录`);
+        }
+        renderWishRanking();
+    }
+    
+    // Auto-init
+    setTimeout(addWishRow, 1000);
+
+    // --- Batch Hand Calculation Functions (Appended/Redefined) ---
+    
+    // Global state for batch rows
+    let handRowsData = {}; // { rowId: { selectedCards: {1:null, 2:null...} } }
+    let currentEditingHandId = null;
+
+    function addHandRow(data = null) {
+        const container = document.getElementById('handRowsContainer');
+        if (!container) return;
+        
+        const rowId = 'hand_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        handRowsData[rowId] = { selectedCards: {1:null, 2:null, 3:null, 4:null, 5:null} };
+        
+        const div = document.createElement('div');
+        div.className = 'hand-row';
+        div.id = rowId;
+        div.style.borderBottom = '1px dashed #ccc';
+        div.style.paddingBottom = '10px';
+        div.style.marginBottom = '15px'; // slightly more space
+        
+        const serial = data ? data.serial : '';
+        const teamName = data ? data.team : '';
+        
+        // If editing, populate selectedCards
+        if (data && data.cards) {
+            data.cards.forEach((c, idx) => {
+                // Find card object from deck
+                // c could be fullName like "♠A" or short like "As" if imported? 
+                // Usually stored as fullName in handHistory.
+                const cardObj = deck.find(d => d.fullName === c || d.rankLabel + d.suit === c); 
+                if (cardObj) handRowsData[rowId].selectedCards[idx+1] = cardObj;
+            });
+        }
+
+        // Build options
+        let serialOptions = '<option value="">序号</option>';
+        let teamOptions = '<option value="">队伍名称</option>';
+        const sortedList = [...teamList].sort((a, b) => {
+             const na = parseInt(a.serial);
+             const nb = parseInt(b.serial);
+             if (!isNaN(na) && !isNaN(nb)) return na - nb;
+             return String(a.serial).localeCompare(String(b.serial));
+        });
+        sortedList.forEach(t => {
+            serialOptions += `<option value="${t.serial}" ${t.serial == serial ? 'selected' : ''}>${t.serial}</option>`;
+            teamOptions += `<option value="${t.name}" ${t.name == teamName ? 'selected' : ''}>${isImage(t.name) ? `序号 ${t.serial} - [图片队伍]` : t.name}</option>`;
+        });
+
+        // Build Card Selectors HTML
+        let cardsHtml = '';
+        for(let i=1; i<=5; i++) {
+            const selectedCard = handRowsData[rowId].selectedCards[i];
+            const triggerText = selectedCard 
+                ? `<span class="card ${selectedCard.color === 'red' ? 'suit-red' : 'suit-black'}">${selectedCard.suit}${selectedCard.rankLabel}</span> ▾` 
+                : '... ▾';
+            const triggerClass = selectedCard ? 'card-select-trigger filled' : 'card-select-trigger';
+            
+            cardsHtml += `
+                <div class="card-input-group" id="group_${rowId}_${i}">
+                    <div class="card-label">牌${i}</div>
+                    <div class="card-select-trigger ${selectedCard ? 'filled' : ''}" onclick="toggleDropdown(${i}, '${rowId}')" id="trigger_${rowId}_${i}">${triggerText}</div>
+                    <div class="dropdown-menu" id="dropdown_${rowId}_${i}">
+                        <input type="text" class="search-box" placeholder="查找..." onkeyup="filterCards(${i}, '${rowId}')" onclick="event.stopPropagation()">
+                        <div class="card-options-list" id="list_${rowId}_${i}"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        div.innerHTML = `
+            <div class="input-group" style="margin-bottom: 10px; width: 100%; display: flex; gap: 10px; align-items: center;">
+                <select class="hand-serial" style="width: 120px; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncHandInput('${rowId}', 'serial')">
+                    ${serialOptions}
+                </select>
+                <select class="hand-team" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: white;" onchange="syncHandInput('${rowId}', 'team')">
+                    ${teamOptions}
+                </select>
+                <button onclick="removeHandRow('${rowId}')" class="btn-danger" style="padding: 5px 10px; font-size: 12px;">删除</button>
+            </div>
+            <div class="card-selectors" style="background: transparent; border: none; padding: 0; margin-bottom: 10px;">
+                ${cardsHtml}
+            </div>
+        `;
+        
+        container.appendChild(div);
+    }
+
+    function removeHandRow(rowId) {
+        const row = document.getElementById(rowId);
+        if (row) row.remove();
+        delete handRowsData[rowId];
+    }
+    
+    function syncHandInput(rowId, source) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        const serialSelect = row.querySelector('.hand-serial');
+        const teamSelect = row.querySelector('.hand-team');
+        if (source === 'serial') {
+            const team = teamList.find(t => t.serial === serialSelect.value);
+            if (team) teamSelect.value = team.name; else teamSelect.value = "";
+        } else {
+            const team = teamList.find(t => t.name === teamSelect.value);
+            if (team) serialSelect.value = team.serial; else serialSelect.value = "";
+        }
+    }
+
+    function toggleDropdown(cardIndex, rowId) {
+        const dropdown = document.getElementById(`dropdown_${rowId}_${cardIndex}`);
+        const isVisible = dropdown.classList.contains('show');
+        
+        closeAllDropdowns(); // Closes all .dropdown-menu
+        
+        if (!isVisible) {
+            dropdown.classList.add('show');
+            const list = document.getElementById(`list_${rowId}_${cardIndex}`);
+            if (list.children.length === 0) {
+                 // Populate list on demand
+                 list.innerHTML = '';
+                 deck.forEach(card => {
+                    const option = document.createElement('div');
+                    option.className = 'card-option';
+                    option.innerHTML = `<span class="card ${card.color === 'red' ? 'suit-red' : 'suit-black'}">${card.suit}${card.rankLabel}</span>`;
+                    option.onclick = (e) => {
+                        e.stopPropagation();
+                        selectCard(cardIndex, card, rowId);
+                    };
+                    option.dataset.search = card.searchKey;
+                    list.appendChild(option);
+                 });
+            }
+            
+            const input = dropdown.querySelector('.search-box');
+            input.value = '';
+            filterCards(cardIndex, rowId);
+            setTimeout(() => input.focus(), 50);
+        }
+    }
+
+    function selectCard(cardIndex, card, rowId) {
+        handRowsData[rowId].selectedCards[cardIndex] = card;
+        const trigger = document.getElementById(`trigger_${rowId}_${cardIndex}`);
+        trigger.innerHTML = `<span class="card ${card.color === 'red' ? 'suit-red' : 'suit-black'}">${card.suit}${card.rankLabel}</span> ▾`;
+        trigger.classList.add('filled');
+        closeAllDropdowns();
+    }
+
+    function filterCards(cardIndex, rowId) {
+        const input = document.querySelector(`#dropdown_${rowId}_${cardIndex} .search-box`);
+        const filter = input.value.toLowerCase();
+        const list = document.getElementById(`list_${rowId}_${cardIndex}`);
+        const options = list.getElementsByClassName('card-option');
+        for (let option of options) {
+            if (option.dataset.search.indexOf(filter) > -1) option.style.display = "";
+            else option.style.display = "none";
+        }
+    }
+    
+    // Redefine closeAllDropdowns to work with new structure (already uses class .dropdown-menu, so it works)
+    
+    function processBatchHands() {
+        if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
+        
+        const rows = document.querySelectorAll('.hand-row');
+        if (rows.length === 0) return;
+        
+        let newHands = [];
+        let errors = [];
+        
+        rows.forEach((row, index) => {
+            const rowId = row.id;
+            const serial = row.querySelector('.hand-serial').value;
+            const teamName = row.querySelector('.hand-team').value;
+            
+            // Check cards
+            const rowCards = handRowsData[rowId].selectedCards;
+            let cards = [];
+            let missing = false;
+            for(let i=1; i<=5; i++) {
+                if(rowCards[i]) cards.push(rowCards[i]);
+                else missing = true;
+            }
+            
+            if (!serial && !teamName && missing) return; // Skip empty
+            
+            if (!serial || !teamName) {
+                 errors.push(`第 ${index+1} 行：请选择队伍`);
+                 return;
+            }
+            if (missing) {
+                 errors.push(`第 ${index+1} 行：请选择完整的5张牌`);
+                 return;
+            }
+            
+            // Validation
+            // Check duplicates within this hand
+            const uniqueCheck = new Set(cards.map(c => c.suit + c.rank));
+            if (uniqueCheck.size !== 5) {
+                errors.push(`第 ${index+1} 行：牌面重复`);
+                return;
+            }
+            
+            newHands.push({
+                serial, team: teamName, cardsObjects: cards
+            });
+        });
+        
+        if (errors.length > 0) {
+            alert(errors.join('\n'));
+            return;
+        }
+        
+        if (newHands.length === 0) {
+             alert('没有有效数据');
+             return;
+        }
+
+        snapshotRanks();
+        insertRankSnapshot(currentEditingHandId ? 'single' : 'batch', 'hand', currentEditingHandId ? newHands[0].serial : 'batch', currentEditingHandId ? '更新牌型' : '批量录入牌型', { count: newHands.length });
+
+        let processedHands = [];
+        
+        newHands.forEach(h => {
+             const result = evaluateHand(h.cardsObjects); 
+             const handObj = {
+                 id: currentEditingHandId && newHands.length === 1 ? currentEditingHandId : `${currentYear}-${h.serial}`,
+                 serial: h.serial,
+                 team: h.team,
+                 cards: h.cardsObjects, // This stores card objects
+                 ...result
+             };
+             
+             // Check if exists
+             const index = handHistory.findIndex(ex => ex.serial === handObj.serial);
+             if (index !== -1) {
+                 handHistory[index] = handObj;
+             } else {
+                 handHistory.push(handObj);
+             }
+             processedHands.push(handObj);
+        });
+        
+        handHistory.sort((a, b) => b.score - a.score);
+        updateTable();
+        upsertHands(processedHands);
+        
+        if (currentEditingHandId) {
+            alert('更新成功');
+            cancelEdit();
+        } else {
+            alert(`成功保存 ${newHands.length} 条牌型记录`);
+            // Reset
+            document.getElementById('handRowsContainer').innerHTML = '';
+            handRowsData = {};
+            addHandRow();
+        }
+    }
+    
+    function editEntry(id) {
+        const hand = handHistory.find(h => h.id === id);
+        if (!hand) return;
+        
+        currentEditingHandId = id;
+        
+        document.getElementById('handRowsContainer').innerHTML = '';
+        handRowsData = {};
+        
+        addHandRow(hand); // hand has { serial, team, cards: [obj, obj...] }
+        
+        document.getElementById('actionBtn').textContent = '更新牌型';
+        document.getElementById('cancelBtn').style.display = 'inline-block';
+        document.querySelector('.toolbar').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    function cancelEdit() {
+        currentEditingHandId = null;
+        document.getElementById('handRowsContainer').innerHTML = '';
+        handRowsData = {};
+        addHandRow();
+        
+        document.getElementById('actionBtn').textContent = '批量计算 & 排名';
+        document.getElementById('cancelBtn').style.display = 'none';
+        document.getElementById('errorMsg').style.display = 'none';
+    }
+    
+    function updateCalculatorDropdowns() {
+        // Need to update batch rows options when teamList changes
+        // Since rows are dynamic, we might need to re-render or update options in existing rows.
+        // For simplicity, we can just find all select elements and update their options.
+        
+        const serialSelects = document.querySelectorAll('.hand-serial, .wish-serial');
+        const teamSelects = document.querySelectorAll('.hand-team, .wish-team');
+        
+        // Build options HTML
+        let serialOptions = '<option value="">序号</option>';
+        let teamOptions = '<option value="">队伍名称</option>';
+        const sortedList = [...teamList].sort((a, b) => {
+             const na = parseInt(a.serial);
+             const nb = parseInt(b.serial);
+             if (!isNaN(na) && !isNaN(nb)) return na - nb;
+             return String(a.serial).localeCompare(String(b.serial));
+        });
+        sortedList.forEach(t => {
+            serialOptions += `<option value="${t.serial}">${t.serial}</option>`;
+            teamOptions += `<option value="${t.name}">${isImage(t.name) ? `序号 ${t.serial} - [图片队伍]` : t.name}</option>`;
+        });
+
+        serialSelects.forEach(sel => {
+            const val = sel.value;
+            sel.innerHTML = serialOptions;
+            sel.value = val;
+        });
+        teamSelects.forEach(sel => {
+            const val = sel.value;
+            sel.innerHTML = teamOptions;
+            sel.value = val;
+        });
+    }
+
+    // Initialize first row
+    setTimeout(addHandRow, 1000);
+    
+    // --- Cleanup/Overrides for old functions ---
+    function renderDropdowns() {}
+    function renderWishDropdowns() {}
+    
     // 启动
     init();
 </script>
