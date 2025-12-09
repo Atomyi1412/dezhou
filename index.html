@@ -1871,8 +1871,8 @@
                 const members = Array.isArray(team.members) ? team.members.join(', ') : '';
                 
                 const wishCount = wish ? (wish.total || 0) : 0;
-                const handName = hand ? (hand.handName || '') : '';
-                const handCards = hand ? (Array.isArray(hand.cards) ? hand.cards.join(' ') : '') : '';
+                const handName = hand ? (hand.handTypeName || '') : '';
+                const handCards = hand ? (Array.isArray(hand.cards) ? hand.cards.map(c => (c.suit||'')+(c.rankLabel||'')).join(' ') : '') : '';
                 
                 finalRankingRows.push({
                     "最终排名": rank,
