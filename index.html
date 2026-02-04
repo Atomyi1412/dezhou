@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>圣诞大冒险统计</title>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Supabase SDK removed, using Feishu Adapter -->
     <style>
         /* Christmas Theme Palette */
         :root {
@@ -244,26 +245,77 @@
         }
         
         table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 20px;
+             width: 100%;
+             border-collapse: separate; /* Revert to separate for better rendering stability */
+             border-spacing: 0;
+             margin-top: 0; /* Reset margin since we are in a container */
+             /* Remove conflicting styles */
+         }
+        /* New style for container to handle rounded corners */
+        .table-responsive {
             border-radius: 8px;
             overflow: hidden;
             box-shadow: 0 0 0 1px #eee;
+            position: relative; /* For pseudo-element positioning */
         }
+        
+        /* Hack to ensure header background is always full width */
+        .table-responsive::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 48px; /* Matches header height (14px padding * 2 + ~20px text) */
+            background-color: var(--xmas-green);
+            z-index: 0; /* Behind table content but visible if table background is transparent */
+            pointer-events: none;
+        }
+        
+    /* Force table layout to auto to allow columns to size naturally, or fixed for stability */
+    table {
+        width: 100%;
+        border-collapse: separate; 
+        border-spacing: 0;
+        margin-top: 0;
+        position: relative;
+        z-index: 1;
+        table-layout: auto; /* Ensure content determines width */
+    }
+
         th, td {
             padding: 14px 12px;
             text-align: left;
             border-bottom: 1px solid #eee;
+            vertical-align: middle; /* Ensure vertical alignment */
+            white-space: nowrap; /* Prevent wrapping causing layout shifts */
+        }
+        td {
+            white-space: normal; /* Allow wrapping in data cells if needed, or keep nowrap */
         }
         th {
-            background-color: var(--xmas-green);
+            background-color: transparent; 
             color: white;
             font-weight: 600;
             text-transform: uppercase;
             font-size: 14px;
             letter-spacing: 0.5px;
+            border-bottom: none;
+            height: 20px; /* Fixed height for content */
+            line-height: 20px;
+        }
+        /* Ensure the header background covers the whole row */
+        thead {
+            /* background-color: var(--xmas-green); */
+        }
+        thead tr {
+            /* background-color: var(--xmas-green); */
+        }
+        /* Remove sticky to avoid rendering artifacts on initial load */
+        thead th {
+            /* position: sticky; */
+            /* top: 0; */
+            /* z-index: 5; */
         }
         tr:last-child td {
             border-bottom: none;
@@ -278,8 +330,18 @@
             top: 0;
             bottom: 0;
             border: 2px solid rgba(46, 139, 87, 0.55);
-            border-radius: 8px;
+            /* border-radius: 8px; Remove this */
             pointer-events: none;
+            z-index: 10;
+        }
+        
+        /* Fix header background */
+        /* thead style moved up */
+        /* thead th style moved up */
+        
+        /* Clean up table definition in case it was defined elsewhere */
+        table {
+            /* Handled above */
         }
 
         .card {
@@ -956,6 +1018,7 @@
         <div class="toolbar" id="calcToolbar">
             <button id="btnCalcImport" onclick="openModal('importModal')" class="btn-secondary" style="padding: 8px 20px;">📂 批量导入</button>
             <button id="btnExportRanking" onclick="exportRanking()" class="btn-secondary btn-info" style="padding: 8px 20px; font-size: 14px;">📤 导出表格</button>
+            <button id="btnUploadAllImages" onclick="uploadAllHandImages()" class="btn-secondary" style="padding: 8px 20px; background-color: #6f42c1; display: none;">🚀 一键上传所有图片</button>
             <button id="btnClearHandData" onclick="clearData()" class="btn-secondary btn-danger" style="padding: 8px 20px; font-size: 14px;">清空数据</button>
         </div>
 
@@ -1016,7 +1079,7 @@
                     <th>牌面</th>
                     <th>积分</th>
                     <th>分数</th>
-                    <th>操作</th>
+                    <!-- 操作列由 JS 动态添加 -->
                 </tr>
             </thead>
             <tbody>
@@ -1188,8 +1251,315 @@
 
 
 <script>
-    const SUPABASE_URL = 'https://ixdgydcuaretfutmsyhz.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml4ZGd5ZGN1YXJldGZ1dG1zeWh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ4NjMwNjQsImV4cCI6MjA4MDQzOTA2NH0.xs37WIBXOQcqKXfa1dK_JT9vyabw6xmz4jaWob7KEOo';
+    // --- Feishu Configuration ---
+    // 请在此处填入您的飞书应用凭证
+    // 注意：由于跨域限制(CORS)，直接在浏览器打开此HTML调用飞书API通常会被拦截。
+    // 建议在支持跨域的环境下使用，或使用服务端代理。
+    const FEISHU_APP_TOKEN = 'FdWwbGQJ5a5kQksoNhQcnotrnVb'; 
+    const FEISHU_PERSONAL_BASE_TOKEN = 'pt-MGDqbCp-cu8bMogpI_j2lDkrL0BfxcXRX2StgWmcAQAAA0DB9MdMwbvWQOMi'; 
+    
+    // 飞书多维表数据表 ID 映射 (请在飞书多维表中创建对应数据表并获取 table_id)
+    const TABLE_IDS = {
+        teams: 'tblr5qgO94XZetm2',            // 字段: year, serial, name, members(text), count, time, sort_key, gifts(text)
+        wishes: 'tbl6HAtXHUBiHQna',          // 字段: year, serial, team_name, wishes(text/json), total
+        hands: 'tblJGDYkvrsMM0wr',            // 字段: year, serial, team_name, hand_type_name, cards(text/json), hand_points, hand_raw_score
+        settings: 'tbl4NpQiprO29rYY',      // 字段: year, key, value(text/json)
+        final_rankings: 'tblIaVSnHo8uTFre',  // 字段: year, serial, team_name, members, wish_total, wish_points, hand_type_name, hand_cards, hand_points, hand_raw_score, final_score, rank
+        rank_change_logs: 'tblAMmLEYml6UJkb'   // 字段: id, year, operation_type, ref_type, ref_identifier, operator, status, summary, details(text), pre_hand_ranks(text), pre_wish_ranks(text), pre_final_ranks(text), post_hand_ranks(text), post_wish_ranks(text), post_final_ranks(text), diff(text), created_at
+    };
+
+    class FeishuAdapter {
+        constructor(appToken, token) {
+            this.appToken = appToken;
+            this.token = token;
+            // 使用本地代理 /open-apis/...
+            this.baseUrl = '/open-apis/bitable/v1/apps';
+        }
+
+        from(tableName) {
+            return new FeishuQueryBuilder(this, tableName);
+        }
+
+        // Helper: Upload file to Feishu (returns file_token)
+        async uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('file_name', file.name);
+            formData.append('file_type', 'image'); // 'stream' or 'image' etc.
+            formData.append('duration', 0); 
+            // Correctly place params in FormData
+            formData.append('parent_type', 'bitable_image'); 
+            formData.append('parent_node', this.appToken);
+            formData.append('size', file.size);
+
+            try {
+                // Use proxy path relative to domain root
+                const res = await fetch('/open-apis/drive/v1/medias/upload_all', {
+                     method: 'POST',
+                     headers: {
+                         'Authorization': `Bearer ${this.token}`
+                         // Content-Type header is set automatically
+                     },
+                     body: formData
+                });
+                
+                if (!res.ok) {
+                     const txt = await res.text();
+                     console.error('Upload Failed:', txt);
+                     return null;
+                }
+                
+                const json = await res.json();
+                if (json.code !== 0) {
+                     console.error('Upload API Error:', json);
+                     return null;
+                }
+                
+                return json.data.file_token;
+            } catch (e) {
+                console.error('Upload Exception:', e);
+                return null;
+            }
+        }
+    }
+
+    class FeishuQueryBuilder {
+        constructor(client, tableName) {
+            this.client = client;
+            this.tableName = tableName;
+            this.tableId = TABLE_IDS[tableName];
+            this.filters = [];
+            this.sorts = [];
+            this.limitVal = 1000;
+            this.singleMode = false;
+        }
+
+        select(columns = '*') {
+            return this;
+        }
+
+        eq(column, value) {
+            this.filters.push({ column, value, op: '=' });
+            return this;
+        }
+        
+        ilike(column, pattern) {
+            const val = pattern.replace(/%/g, '');
+            this.filters.push({ column, value: val, op: 'contains' });
+            return this;
+        }
+
+        order(column, { ascending = true } = {}) {
+            this.sorts.push({ column, ascending });
+            return this;
+        }
+        
+        limit(n) {
+            this.limitVal = n;
+            return this;
+        }
+        
+        single() {
+            this.singleMode = true;
+            this.limitVal = 1;
+            return this;
+        }
+        
+        async _fetch() {
+             if (!this.tableId) {
+                 console.error(`Table ID not found for ${this.tableName}`);
+                 return { data: [], error: 'Table not configured' };
+             }
+
+             let filterStr = '';
+             if (this.filters.length > 0) {
+                 const conditions = this.filters.map(f => {
+                     let valStr = JSON.stringify(f.value);
+                     if (f.op === 'contains') {
+                         return `CurrentValue.[${f.column}].contains(${valStr})`;
+                     }
+                     return `CurrentValue.[${f.column}]=${valStr}`;
+                 });
+                 if (conditions.length > 1) {
+                     filterStr = `AND(${conditions.join(',')})`;
+                 } else {
+                     filterStr = conditions[0];
+                 }
+             }
+             
+             let url = `${this.client.baseUrl}/${this.client.appToken}/tables/${this.tableId}/records?page_size=${this.limitVal}`;
+             if (filterStr) {
+                 url += `&filter=${encodeURIComponent(filterStr)}`;
+             }
+
+             try {
+                 const res = await fetch(url, {
+                     headers: {
+                         'Authorization': `Bearer ${this.client.token}`,
+                         'Content-Type': 'application/json'
+                     }
+                 });
+                 
+                 if (!res.ok) {
+                     const txt = await res.text();
+                     console.error('Feishu API Error:', txt);
+                     return { data: null, error: txt };
+                 }
+                 
+                 const json = await res.json();
+                 if (json.code !== 0) {
+                     console.error('Feishu Business Error:', json);
+                     return { data: null, error: json.msg };
+                 }
+                 
+                 let items = json.data.items.map(item => {
+                     const fields = item.fields;
+                     // Auto-parse JSON strings
+                     for (let key in fields) {
+                         if (typeof fields[key] === 'string' && (fields[key].startsWith('{') || fields[key].startsWith('['))) {
+                             try {
+                                 fields[key] = JSON.parse(fields[key]);
+                             } catch(e) {}
+                         }
+                     }
+                     // Map record_id to id if not present, but better rely on explicit 'id' field if we manage it
+                     // We expose _record_id anyway
+                     return { ...fields, _record_id: item.record_id };
+                 });
+
+                 // Client-side sort
+                 if (this.sorts.length > 0) {
+                     items.sort((a, b) => {
+                         for (let s of this.sorts) {
+                             const va = a[s.column];
+                             const vb = b[s.column];
+                             if (va < vb) return s.ascending ? -1 : 1;
+                             if (va > vb) return s.ascending ? 1 : -1;
+                         }
+                         return 0;
+                     });
+                 }
+                 
+                 if (this.singleMode) {
+                     return { data: items[0] || null, error: null };
+                 }
+                 return { data: items, error: null };
+                 
+             } catch (e) {
+                 return { data: null, error: e.message };
+             }
+        }
+        
+        // Helper: Upload file to Feishu (returns file_token)
+        // Moved to FeishuAdapter class
+        
+        then(resolve, reject) {
+            this._fetch().then(resolve).catch(reject);
+        }
+
+        async upsert(rows, { onConflict } = {}) {
+            if (!Array.isArray(rows)) rows = [rows];
+            if (!onConflict) onConflict = 'year,serial'; // Default guess
+            
+            const conflictKeys = onConflict.split(',').map(k => k.trim());
+            
+            for (let row of rows) {
+                // Find existing
+                const q = new FeishuQueryBuilder(this.client, this.tableName);
+                conflictKeys.forEach(k => {
+                    if (row[k] !== undefined) q.eq(k, row[k]);
+                });
+                const { data: existing } = await q.single();
+                
+                // Prepare fields
+                const fields = { ...row };
+                // Stringify objects/arrays
+                for (let key in fields) {
+                    if (typeof fields[key] === 'object' && fields[key] !== null) {
+                        fields[key] = JSON.stringify(fields[key]);
+                    }
+                }
+                
+                if (existing) {
+                    // Update
+                    const url = `${this.client.baseUrl}/${this.client.appToken}/tables/${this.tableId}/records/${existing._record_id}`;
+                    await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `Bearer ${this.client.token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ fields })
+                    });
+                } else {
+                    // Insert
+                    const url = `${this.client.baseUrl}/${this.client.appToken}/tables/${this.tableId}/records`;
+                    await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.client.token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ fields })
+                    });
+                }
+            }
+            return { error: null };
+        }
+
+        async delete() {
+            const { data: items } = await this._fetch();
+            if (items && items.length > 0) {
+                for (let item of items) {
+                    const url = `${this.client.baseUrl}/${this.client.appToken}/tables/${this.tableId}/records/${item._record_id}`;
+                    await fetch(url, {
+                        method: 'DELETE',
+                        headers: {
+                            'Authorization': `Bearer ${this.client.token}`
+                        }
+                    });
+                }
+            }
+            return { error: null };
+        }
+        
+        async insert(row) {
+             // Generate ID if missing and needed (e.g. for logs)
+             if (!row.id && this.tableName === 'rank_change_logs') {
+                 row.id = 'log_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+             }
+             if (!row.created_at) {
+                 row.created_at = new Date().toISOString();
+             }
+             return this.upsert(row, { onConflict: 'fake_key_to_force_insert_' + Date.now() }); 
+        }
+        
+        async update(fields) {
+             const { data: items } = await this._fetch();
+             if (items) {
+                  const cleanFields = { ...fields };
+                  for (let key in cleanFields) {
+                      if (typeof cleanFields[key] === 'object' && cleanFields[key] !== null) {
+                          cleanFields[key] = JSON.stringify(cleanFields[key]);
+                      }
+                  }
+                  
+                  for (let item of items) {
+                      const url = `${this.client.baseUrl}/${this.client.appToken}/tables/${this.tableId}/records/${item._record_id}`;
+                      await fetch(url, {
+                          method: 'PUT',
+                          headers: {
+                              'Authorization': `Bearer ${this.client.token}`,
+                              'Content-Type': 'application/json'
+                          },
+                          body: JSON.stringify({ fields: cleanFields })
+                      });
+                  }
+             }
+             return { error: null };
+        }
+    }
+
     let supabaseClient = null;
     let currentYear = null;
     let isAdmin = false;
@@ -1348,6 +1718,7 @@
             show(document.getElementById('calcFormSection')); // Show wrapper
             show(document.getElementById('btnClearHandData'));
             show(document.getElementById('btnExportRanking'));
+            show(document.getElementById('btnUploadAllImages'));
 
             show(document.getElementById('btnWishSettings'));
             show(document.getElementById('btnWishImport'));
@@ -1378,6 +1749,7 @@
             hide(document.getElementById('calcFormSection')); // Hide wrapper
             hide(document.getElementById('btnClearHandData'));
             hide(document.getElementById('btnExportRanking'));
+            hide(document.getElementById('btnUploadAllImages'));
 
             hide(document.getElementById('btnWishSettings'));
             hide(document.getElementById('btnWishImport'));
@@ -1425,7 +1797,12 @@
 
     async function initSupabase() {
         if (!supabaseClient) {
-            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            // Using Feishu Adapter
+            if (!FEISHU_APP_TOKEN || FEISHU_APP_TOKEN.includes('YOUR_APP_TOKEN')) {
+                alert('请在代码中配置 Feishu App Token 和 Personal Base Token');
+                return;
+            }
+            supabaseClient = new FeishuAdapter(FEISHU_APP_TOKEN, FEISHU_PERSONAL_BASE_TOKEN);
         }
     }
 
@@ -1452,14 +1829,27 @@
         const { data: settings } = await supabaseClient.from('settings').select('*').eq('year', year);
         if (settings) {
             const tiersSetting = settings.find(s => s.key === 'gift_tiers');
-            if (tiersSetting) giftTiers = tiersSetting.value;
-            
+            if (tiersSetting && Array.isArray(tiersSetting.value)) {
+                giftTiers = tiersSetting.value;
+            } else if (tiersSetting && typeof tiersSetting.value === 'string') {
+                 try { giftTiers = JSON.parse(tiersSetting.value); } catch(e) {}
+            }
+            if (!Array.isArray(giftTiers)) giftTiers = []; // Fallback
+
             const imagesSetting = settings.find(s => s.key === 'gift_images');
-            if (imagesSetting) giftImages = imagesSetting.value;
+            if (imagesSetting && Array.isArray(imagesSetting.value)) {
+                giftImages = imagesSetting.value;
+            } else if (imagesSetting && typeof imagesSetting.value === 'string') {
+                 try { giftImages = JSON.parse(imagesSetting.value); } catch(e) {}
+            }
+            if (!Array.isArray(giftImages)) giftImages = []; // Fallback
 
             const baselineSetting = settings.find(s => s.key === 'rank_baseline');
             if (baselineSetting && baselineSetting.value) {
                 rankBaseline = baselineSetting.value;
+                if (typeof rankBaseline === 'string') {
+                     try { rankBaseline = JSON.parse(rankBaseline); } catch(e) {}
+                }
             }
 
             const totalTeamsSetting = settings.find(s => s.key === 'total_teams');
@@ -4602,7 +4992,13 @@
 
             handHistory = handHistory.filter(h => h.id !== id);
             
-            deleteHandsInCloud(hand.serial);
+            // Wait for cloud deletion then refresh, or fire and forget?
+            // If we await, we can show status.
+            // deleteHandsInCloud returns a promise.
+            deleteHandsInCloud(hand.serial).then(() => {
+                // If we want to fully sync with cloud after deletion, we might reload data.
+                // For now, local update is fine.
+            });
             
             updateTable();
         }
@@ -5403,6 +5799,228 @@
     
     // Redefine closeAllDropdowns to work with new structure (already uses class .dropdown-menu, so it works)
     
+    // Image Generation & Upload Logic
+    async function generateAndUploadHandImage(rowId, serial, silent = false) {
+        const rowElement = document.getElementById(rowId);
+        if (!rowElement) {
+            if (!silent) alert("找不到对应的行元素");
+            return { success: false, msg: "Row element not found" };
+        }
+        
+        // Find the cards container within the row
+        const targetElement = rowElement.querySelector('.cards-container');
+        if (!targetElement) {
+             if (!silent) alert("找不到牌面区域");
+             return { success: false, msg: "Cards container not found" };
+        }
+
+        const btn = rowElement.querySelector('.btn-upload-image');
+        const originalText = btn ? btn.innerText : '上传';
+
+        try {
+            // Show loading state
+            if (btn) {
+                btn.disabled = true;
+                btn.innerText = '生成中...';
+            }
+
+            // Generate Canvas - Target only the cards container
+            const canvas = await html2canvas(targetElement, {
+                backgroundColor: '#ffffff',
+                scale: 2 // Higher resolution
+            });
+
+            // Convert to Blob and Upload
+            return new Promise((resolve) => {
+                canvas.toBlob(async (blob) => {
+                    if (!blob) {
+                        if (!silent) alert("图片生成失败");
+                        if (btn) {
+                             btn.disabled = false;
+                             btn.innerText = originalText;
+                        }
+                        resolve({ success: false, msg: "Image generation failed" });
+                        return;
+                    }
+
+                    if (btn) btn.innerText = '上传中...';
+
+                    // Create File object
+                    const timestamp = new Date().getTime();
+                    const fileName = `hand_${serial}_${timestamp}.png`;
+                    const file = new File([blob], fileName, { type: 'image/png' });
+
+                    // Upload to Feishu Drive
+                    const fileToken = await supabaseClient.uploadFile(file);
+
+                    if (fileToken) {
+                        console.log('File uploaded, token:', fileToken);
+                        
+                        try {
+                            // Check if attachment field exists, create if not
+                            const fieldName = 'attachment';
+                            
+                            // 1. Check field existence
+                            let fieldExists = false;
+                            try {
+                                const res = await fetch(`${supabaseClient.baseUrl}/${supabaseClient.appToken}/tables/${TABLE_IDS.hands}/fields`, {
+                                    headers: { 'Authorization': `Bearer ${supabaseClient.token}` }
+                                });
+                                const json = await res.json();
+                                if (json.code === 0 && json.data.items) {
+                                    fieldExists = json.data.items.some(f => f.field_name === fieldName);
+                                }
+                            } catch(e) { console.error('Check field failed', e); }
+
+                            // 2. Create field if missing
+                            if (!fieldExists) {
+                                // For silent mode, we assume user would approve or we just try anyway?
+                                // Better to skip creation in silent mode to avoid stuck or auto-create if we are sure.
+                                // Let's try to auto-create if not exists, but silent mode can't use confirm.
+                                if (!silent) {
+                                    if (confirm(`检测到表中缺少 '${fieldName}' 字段，是否自动创建？`)) {
+                                        try {
+                                            await fetch(`${supabaseClient.baseUrl}/${supabaseClient.appToken}/tables/${TABLE_IDS.hands}/fields`, {
+                                                method: 'POST',
+                                                headers: {
+                                                    'Authorization': `Bearer ${supabaseClient.token}`,
+                                                    'Content-Type': 'application/json'
+                                                },
+                                                body: JSON.stringify({
+                                                    field_name: fieldName,
+                                                    type: 17 // Attachment type
+                                                })
+                                            });
+                                            alert(`字段 '${fieldName}' 已创建。`);
+                                        } catch(e) {
+                                            alert(`创建字段失败: ${e.message}`);
+                                            throw e;
+                                        }
+                                    } else {
+                                        throw new Error("用户取消创建字段");
+                                    }
+                                } else {
+                                     // Silent mode: try to create anyway or skip?
+                                     // Let's assume field exists or we skip update.
+                                     // Or try create blindly? No, unsafe.
+                                     // Let's just log.
+                                     console.warn("Silent mode: Attachment field missing, skipping creation prompt.");
+                                }
+                            }
+
+                            // 3. Update Record
+                            const q = new FeishuQueryBuilder(supabaseClient, 'hands');
+                            q.eq('year', currentYear).eq('serial', String(serial));
+                            const { data: existing } = await q.single();
+                            
+                            if (existing) {
+                                 const url = `${supabaseClient.baseUrl}/${supabaseClient.appToken}/tables/${TABLE_IDS.hands}/records/${existing._record_id}`;
+                                 await fetch(url, {
+                                     method: 'PUT',
+                                     headers: {
+                                         'Authorization': `Bearer ${supabaseClient.token}`,
+                                         'Content-Type': 'application/json'
+                                     },
+                                     body: JSON.stringify({
+                                         fields: {
+                                             [fieldName]: [{ file_token: fileToken }]
+                                         }
+                                     })
+                                 });
+                                 if (!silent) alert(`图片上传成功！\nFile Token: ${fileToken}\n已更新到 '${fieldName}' 字段。`);
+                                 
+                                 if (btn) {
+                                    btn.disabled = false;
+                                    btn.innerText = '已上传';
+                                    setTimeout(() => { if(btn) btn.innerText = originalText; }, 2000);
+                                 }
+                                 resolve({ success: true, token: fileToken });
+                            } else {
+                                if (!silent) alert("未找到对应记录，无法更新附件字段。");
+                                resolve({ success: false, msg: "Record not found" });
+                            }
+                        } catch (e) {
+                            console.error("Update record failed:", e);
+                            if (!silent) alert(`图片已上传(Token: ${fileToken})，但在更新记录时出错: ${e.message}`);
+                            resolve({ success: false, msg: "Update record failed: " + e.message });
+                        }
+
+                    } else {
+                        if (!silent) alert("上传失败，请查看控制台日志");
+                        resolve({ success: false, msg: "Upload failed" });
+                    }
+
+                    if (btn && !fileToken) { // Only reset if failed
+                        btn.disabled = false;
+                        btn.innerText = originalText;
+                    }
+                }, 'image/png');
+            });
+
+        } catch (e) {
+            console.error("Error generating image:", e);
+            if (!silent) alert("生成图片出错");
+             if (btn) {
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+            return { success: false, msg: "Exception: " + e.message };
+        }
+    }
+    
+    // Upload All Logic
+    async function uploadAllHandImages() {
+        if (!isAdmin) return;
+        
+        const rows = document.querySelectorAll('#rankingTable tbody tr');
+        if (rows.length === 0) {
+            alert("列表中没有数据");
+            return;
+        }
+        
+        const confirmMsg = `确定要批量上传 ${rows.length} 张图片吗？\n这将花费一些时间，请勿关闭页面。`;
+        if (!confirm(confirmMsg)) return;
+        
+        const btn = document.getElementById('btnUploadAllImages');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        
+        let successCount = 0;
+        let failCount = 0;
+        
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const rowId = row.id;
+            // Extract serial from row ID or cell content? 
+            // rowId is `hand-row-${serial}`
+            const serial = rowId.replace('hand-row-', '');
+            
+            btn.innerText = `上传中 (${i+1}/${rows.length})...`;
+            
+            // Scroll row into view to ensure html2canvas captures it correctly (sometimes needed for lazy load or rendering)
+            row.scrollIntoView({ block: 'center' });
+            
+            // Wait a bit for render
+            await new Promise(r => setTimeout(r, 200));
+            
+            const result = await generateAndUploadHandImage(rowId, serial, true); // Silent mode
+            if (result.success) {
+                successCount++;
+            } else {
+                failCount++;
+                console.error(`Failed to upload row ${serial}:`, result.msg);
+            }
+            
+            // Small delay between requests
+            await new Promise(r => setTimeout(r, 500));
+        }
+        
+        btn.disabled = false;
+        btn.innerText = originalText;
+        
+        alert(`批量上传完成！\n成功: ${successCount}\n失败: ${failCount}`);
+    }
+
     function processBatchHands() {
         if (!isAdmin) { alert('当前为普通用户，只能查看和导出'); return; }
         
@@ -5499,6 +6117,73 @@
             handRowsData = {};
             addHandRow();
         }
+    }
+
+    function updateTable() {
+        const theadRow = document.querySelector('#rankingTable thead tr');
+        // Clear potential existing 'Action' column first
+        const existingTh = theadRow.querySelector('.th-action');
+        if (existingTh) existingTh.remove();
+        
+        // Remove placeholder if it exists (though display:none should be fine, removing is cleaner)
+        const placeholder = theadRow.querySelector('.th-action-placeholder');
+        if (placeholder) placeholder.remove();
+        
+        if (isAdmin) {
+             const th = document.createElement('th');
+             th.className = 'th-action';
+             th.textContent = '操作';
+             theadRow.appendChild(th);
+        }
+
+        const tbody = document.querySelector('#rankingTable tbody');
+        tbody.innerHTML = '';
+
+        handHistory.forEach((entry, index) => {
+            const row = document.createElement('tr');
+            row.id = `hand-row-${entry.serial}`; // ID for screenshot
+            
+            // Calculate Rank
+            let rank = index + 1;
+            if (index > 0 && entry.score === handHistory[index - 1].score) {
+                // Find first index of this score
+                const firstIndex = handHistory.findIndex(h => h.score === entry.score);
+                rank = firstIndex + 1;
+            }
+
+            // Cards HTML
+            let cardsHtml = '';
+            if (entry.cards && entry.cards.length > 0) {
+                cardsHtml = entry.cards.map(c => {
+                    const colorClass = (c.suit === '♥' || c.suit === '♦' || c.color === 'red') ? 'suit-red' : 'suit-black';
+                    return `<span class="card ${colorClass}">${c.suit}${c.rankLabel}</span>`;
+                }).join('');
+            } else {
+                cardsHtml = '-';
+            }
+            
+            // Calculate Points
+            const points = totalTeams - rank + 1;
+
+            const nameDisplay = isImage(entry.team) ? `<img src="${entry.team}" style="height:30px; vertical-align:middle;">` : entry.team;
+
+            row.innerHTML = `
+                <td>${rank}${getRankChangeHtml(entry.serial, rank, 'hand')}</td>
+                <td>${entry.serial}</td>
+                <td>${nameDisplay}</td>
+                <td>${entry.handTypeName}</td>
+                <td style="white-space: nowrap;" class="cards-container">${cardsHtml}</td>
+                <td>${points}</td>
+                <td style="color: #aaa; font-size: 0.85em;">${Math.floor(entry.score)}</td>
+                ${isAdmin ? `
+                <td>
+                    <button class="btn-upload-image" onclick="generateAndUploadHandImage('${row.id}', '${entry.serial}')" style="padding:2px 5px; font-size:12px; background:#28a745;">生成并上传</button>
+                    <button onclick="deleteHand('${entry.id}')" style="padding:2px 5px; font-size:12px; background:#dc3545;">删除</button>
+                </td>
+                ` : ''}
+            `;
+            tbody.appendChild(row);
+        });
     }
     
     function editEntry(id) {

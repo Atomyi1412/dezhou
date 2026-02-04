@@ -1,3 +1,9 @@
 [build]
   publish = "."
   command = ""
+
+[[redirects]]
+  from = "/open-apis/*"
+  to = "https://open.feishu.cn/open-apis/:splat"
+  status = 200
+  force = true
