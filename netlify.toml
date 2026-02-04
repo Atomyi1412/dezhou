@@ -4,6 +4,13 @@
 
 [[redirects]]
   from = "/open-apis/*"
-  to = "https://open.feishu.cn/open-apis/:splat"
+  to = "https://base-api.feishu.cn/open-apis/:splat"
   status = 200
   force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
